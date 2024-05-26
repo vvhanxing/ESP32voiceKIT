@@ -10,7 +10,9 @@ import aliyunapi
 import shutil
 
 def llm_pridect(prompt):
-    
+    print("prompt:",prompt)
+    if prompt==None:
+        prompt = "主人来啦"
     url = 'https://api.dify.ai/v1/workflows/run'
     headers = {
         'Authorization': 'Bearer app-TIfJY5lsgtBP74niv58HUBa2',
@@ -24,7 +26,7 @@ def llm_pridect(prompt):
 
     response = requests.post(url, headers=headers, json=data)
 
-    print(response.json()["data"]["outputs"]["result"])
+    print(response.json())
     return response.json()["data"]["outputs"]["result"]
 
 
@@ -48,7 +50,7 @@ def get_speech_(text):
 
 def get_speech(text):
 
-    aliyunapi.tts()
+    aliyunapi.tts(text)
 
 
 def ffmpeg_WavToMP3(input_path, output_path):
@@ -81,7 +83,7 @@ def audio2text():
 
     stt_text =  aliyunapi.stt()
   
-    print(stt_text)
+    print("stt_text:",stt_text)
     prompt = stt_text
     llm_answer = llm_pridect(prompt)
     get_speech(llm_answer)
@@ -96,7 +98,7 @@ def stream_mp3():
     global audio_data
 
     audio_data = b""
-    audio_file = './output.mp3'
+    audio_file = 'output.mp3'
     # ffmpeg_MP3ToWav(input_path, output_path)
     return send_file(audio_file, mimetype='audio/mpeg')
 
