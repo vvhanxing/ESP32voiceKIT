@@ -19,6 +19,6 @@ sudo apt install ffmpeg
 
 
 
-
+git clone https://github.com/aliyun/alibabacloud-nls-python-sdk.git
 
 githubfast镜像：https://githubfast.com/
