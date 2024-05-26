@@ -11,14 +11,14 @@ systemctl start nginx
 nginx -s reload
 
 
-wget https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-py38_4.8.3-Linux-x86_64.sh --no-check-certificate
-sh Miniconda3-py38_4.8.3-Linux-x86_64.sh
-vim ~/.bashrc 
+wget https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-py38_4.8.3-Linux-x86_64.sh --no-check-certificate  
+sh Miniconda3-py38_4.8.3-Linux-x86_64.sh  
+vim ~/.bashrc   
  
-export PATH="/root/miniconda3/bin:$PATH"
-source ~/.bashrc
+export PATH="/root/miniconda3/bin:$PATH"  
+source ~/.bashrc  
 
-sudo apt install ffmpeg
+sudo apt install ffmpeg  
 
 
 
