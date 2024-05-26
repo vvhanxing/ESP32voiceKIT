@@ -63,7 +63,7 @@ def tts(text):
     textUrlencode = textUrlencode.replace("+", "%20")
     textUrlencode = textUrlencode.replace("*", "%2A")
     textUrlencode = textUrlencode.replace("%7E", "~")
-    print('text: ' + textUrlencode)
+    #print('text: ' + textUrlencode)
     audioSaveFile = 'output.wav'
     format = 'wav'
     sampleRate = 16000
@@ -121,7 +121,7 @@ class TestSr:
     def test_on_completed(self, message, *args):
         print("on_completed:args=>{} message=>{}".format(args, message))
         self.result =message
-        print("self.result ",self.result )
+        #print("self.result ",self.result )
 
 
     def __test_run(self):
@@ -147,12 +147,12 @@ class TestSr:
             time.sleep(0.01)
       
         r = sr.stop()
-        print("{}: sr stopped:{}".format(self.__id, r))
+        #print("{}: sr stopped:{}".format(self.__id, r))
         #print(dir(sr))
         
         time.sleep(1)
 
-def multiruntest(file_name = "output.wav",num=1):
+def multiruntest(file_name = "uploaded_audio.wav",num=1):
 
     name = "thread" + str(0)
     t = TestSr(name,file_name )
