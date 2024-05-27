@@ -8,26 +8,50 @@ import requests
 import json
 import aliyunapi
 import shutil
-
-def llm_pridect(prompt):
+from http import HTTPStatus
+import dashscope
+dashscope.api_key = "sk-80d6d634c5514cdca77bc6ae448d891"
+#2
+def llm_pridect(prompt,model="ailiyun"):#"dify"
     print("prompt:",prompt)
+    print("type",type(prompt))
     if prompt==None:
         prompt = "主人来啦"
-    url = 'https://api.dify.ai/v1/workflows/run'
-    headers = {
-        'Authorization': 'Bearer app-TIfJY5lsgtBP74niv58HUBa2',
-        'Content-Type': 'application/json'
-    }
-    data = {
-        "inputs": {"sysPrompt":"假如你是一个可爱的女孩,愿意回答用户的任何问题","prompt":prompt},
-        "response_mode": "blocking",
-        "user": "abc-1"
-    }
+    if model=="dify":
+        url = 'https://api.dify.ai/v1/workflows/run'
+        headers = {
+            'Authorization': 'Bearer app-TIfJY5lsgtBP74niv58HUBa2',
+            'Content-Type': 'application/json'
+        }
+        data = {
+            "inputs": {"sysPrompt":"假如你是一个可爱的女孩,愿意回答用户的任何问题","prompt":prompt},
+            "response_mode": "blocking",
+            "user": "abc-1"
+        }
 
-    response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json=data)
 
-    print(response.json())
-    return response.json()["data"]["outputs"]["result"]
+        print(response.json())
+        return response.json()["data"]["outputs"]["result"]
+    if model=="ailiyun":
+
+        messages = [{'role': 'system', 'content': 'You are a helpful assistant.'},
+                    {'role': 'user', 'content': prompt}]
+
+        response = dashscope.Generation.call(
+            dashscope.Generation.Models.qwen_turbo,
+            messages=messages,
+            result_format='message',  # 将返回结果格式设置为 message
+        )
+        if response.status_code == HTTPStatus.OK:
+        # print(response)
+            return response.output.choices[0].message.content
+        else:
+            print('Request id: %s, Status code: %s, error code: %s, error message: %s' % (
+                response.request_id, response.status_code,
+                response.code, response.message
+            ))
+            return "嗯哼，我脑空空"        
 
 
 
@@ -91,7 +115,7 @@ def audio2text():
     print("ffmpeg_WavToMP3 success")
     return "start speaking"
 
-audio_data = b""
+
 @app.route('/audio/mp3')
 def stream_mp3():
     
