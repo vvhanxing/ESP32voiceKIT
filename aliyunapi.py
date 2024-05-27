@@ -27,27 +27,31 @@ client = AcsClient(
    "cn-shanghai"
 )
 
+expireTime = 0
 def getToken():
-   # 创建request，并设置参数。
-   request = CommonRequest()
-   request.set_method('POST')
-   request.set_domain('nls-meta.cn-shanghai.aliyuncs.com')
-   request.set_version('2019-02-28')
-   request.set_action_name('CreateToken')
+    global expireTime
+    if expireTime<100:
+        # 创建request，并设置参数。
+        request = CommonRequest()
+        request.set_method('POST')
+        request.set_domain('nls-meta.cn-shanghai.aliyuncs.com')
+        request.set_version('2019-02-28')
+        request.set_action_name('CreateToken')
 
-   try : 
-      response = client.do_action_with_exception(request)
-      print(response)
+        try : 
+            response = client.do_action_with_exception(request)
+            print(response)
 
-      jss = json.loads(response)
-      if 'Token' in jss and 'Id' in jss['Token']:
-         token = jss['Token']['Id']
-         expireTime = jss['Token']['ExpireTime']
-         print("token = " + token)
-         return token
-         print("expireTime = " + str(expireTime))
-   except Exception as e:
-      print(e)
+            jss = json.loads(response)
+            if 'Token' in jss and 'Id' in jss['Token']:
+                token = jss['Token']['Id']
+                expireTime = jss['Token']['ExpireTime']
+                print("expireTime = " + str(expireTime))
+                print("token = " + token)
+                return token
+                
+        except Exception as e:
+            print(e)
 
 
 
