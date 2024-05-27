@@ -11,6 +11,47 @@ import http.client
 # Python 3.x引入urllib.parse模块。
 import urllib.parse
 import json
+
+#! /usr/bin/env python
+# coding=utf-8
+import os
+import time
+import json
+from aliyunsdkcore.client import AcsClient
+from aliyunsdkcore.request import CommonRequest
+
+# 创建AcsClient实例
+client = AcsClient(
+   "LTAI5t7D3MNPNb6EJASM6qB",#os.getenv('ALIYUN_AK_ID6'),
+   "NGEvoIkwWlVIlsJcMcgz4AZlrfkl8",#os.getenv('ALIYUN_AK_SECRETn'),
+   "cn-shanghai"
+)
+
+def getToken():
+   # 创建request，并设置参数。
+   request = CommonRequest()
+   request.set_method('POST')
+   request.set_domain('nls-meta.cn-shanghai.aliyuncs.com')
+   request.set_version('2019-02-28')
+   request.set_action_name('CreateToken')
+
+   try : 
+      response = client.do_action_with_exception(request)
+      print(response)
+
+      jss = json.loads(response)
+      if 'Token' in jss and 'Id' in jss['Token']:
+         token = jss['Token']['Id']
+         expireTime = jss['Token']['ExpireTime']
+         print("token = " + token)
+         return token
+         print("expireTime = " + str(expireTime))
+   except Exception as e:
+      print(e)
+
+
+
+
 def processGETRequest(appKey, token, text, audioSaveFile, format, sampleRate) :
     host = 'nls-gateway-cn-shanghai.aliyuncs.com'
     url = 'https://' + host + '/stream/v1/tts'
@@ -28,7 +69,7 @@ def processGETRequest(appKey, token, text, audioSaveFile, format, sampleRate) :
     # url = url + '&speech_rate=' + str(0)
     # pitch_rate 语调，范围是-500~500，可选，默认是0。
     # url = url + '&pitch_rate=' + str(0)
-    print(url)
+    #print(url)
     # Python 2.x请使用httplib。
     # conn = httplib.HTTPSConnection(host)
     # Python 3.x请使用http.client。
@@ -50,9 +91,10 @@ def processGETRequest(appKey, token, text, audioSaveFile, format, sampleRate) :
     conn.close()
 
 
+
 def tts(text):
     appKey = 'neOKFzoQEin4ykLg'
-    token = 'a76c3246809f491dbce1c90e75d90efe'
+    token =getToken()# '58796110d1814e7487f9f3ae9c6ffd4d'
     
     # 采用RFC 3986规范进行urlencode编码。
     textUrlencode = text
@@ -87,7 +129,7 @@ import nls
 import json
 
 URL="wss://nls-gateway-cn-shanghai.aliyuncs.com/ws/v1"
-TOKEN="a76c3246809f491dbce1c90e75d90efe"   #参考https://help.aliyun.com/document_detail/450255.html获取token
+TOKEN=getToken()#"58796110d1814e7487f9f3ae9c6ffd4d"   #参考https://help.aliyun.com/document_detail/450255.html获取token
 APPKEY="neOKFzoQEin4ykLg"      #获取Appkey请前往控制台：https://nls-portal.console.aliyun.com/applist
 
 #以下代码会根据音频文件内容反复进行一句话识别
