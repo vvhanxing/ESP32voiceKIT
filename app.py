@@ -1,3 +1,4 @@
+
 from flask import Flask, request, send_file
 import os
 import subprocess
@@ -10,8 +11,8 @@ import aliyunapi
 import shutil
 from http import HTTPStatus
 import dashscope
-dashscope.api_key = "sk-80d6d634c5514cdca77bc6ae448d891"
-#2
+dashscope.api_key = "sk-80d6d634c5514cdca77bc6ae448d8912"
+
 def llm_pridect(prompt,model="ailiyun"):#"dify"
     print("prompt:",prompt)
     print("type",type(prompt))
@@ -35,7 +36,7 @@ def llm_pridect(prompt,model="ailiyun"):#"dify"
         return response.json()["data"]["outputs"]["result"]
     if model=="ailiyun":
 
-        messages = [{'role': 'system', 'content': 'You are a helpful assistant.'},
+        messages = [{'role': 'system', 'content': '假如你是一个可爱的女孩,愿意回答用户的任何问题'},
                     {'role': 'user', 'content': prompt}]
 
         response = dashscope.Generation.call(
@@ -45,13 +46,15 @@ def llm_pridect(prompt,model="ailiyun"):#"dify"
         )
         if response.status_code == HTTPStatus.OK:
         # print(response)
-            return response.output.choices[0].message.content
+            result = response.output.choices[0].message.content
+            print(result )
+            return  result 
         else:
             print('Request id: %s, Status code: %s, error code: %s, error message: %s' % (
                 response.request_id, response.status_code,
                 response.code, response.message
             ))
-            return "嗯哼，我脑空空"        
+            return "嗯哼，我脑袋空空"        
 
 
 
