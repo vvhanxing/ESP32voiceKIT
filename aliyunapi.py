@@ -22,8 +22,8 @@ from aliyunsdkcore.request import CommonRequest
 
 # 创建AcsClient实例
 client = AcsClient(
-   "LTAI5t7D3MNPNb6EJASM6qB",#os.getenv('ALIYUN_AK_ID')6,
-   "NGEvoIkwWlVIlsJcMcgz4AZlrfkl8",#os.getenv('ALIYUN_AK_SECRET')n,
+   "LTAI5t7D3MNPNb6EJASM6qB",#os.getenv('ALIYUN_AK_ID'),6
+   "NGEvoIkwWlVIlsJcMcgz4AZlrfkl8",#os.getenv('ALIYUN_AK_SECRET'),n
    "cn-shanghai"
 )
 
@@ -50,6 +50,7 @@ def getToken():
                 expireTime = jss['Token']['ExpireTime']
                 print("expireTime = " + str(expireTime))
                 print("token = " + token)
+                return token
                
                 
         except Exception as e:
@@ -100,6 +101,7 @@ def processGETRequest(appKey, token, text, audioSaveFile, format, sampleRate) :
 
 def tts(text):
     appKey = 'neOKFzoQEin4ykLg'
+    global token
     getToken()# '58796110d1814e7487f9f3ae9c6ffd4d'
     
     # 采用RFC 3986规范进行urlencode编码。
@@ -135,8 +137,8 @@ import nls
 import json
 
 URL="wss://nls-gateway-cn-shanghai.aliyuncs.com/ws/v1"
-getToken()
-TOKEN=token#"58796110d1814e7487f9f3ae9c6ffd4d"   #参考https://help.aliyun.com/document_detail/450255.html获取token
+
+#TOKEN=token#"58796110d1814e7487f9f3ae9c6ffd4d"   #参考https://help.aliyun.com/document_detail/450255.html获取token
 APPKEY="neOKFzoQEin4ykLg"      #获取Appkey请前往控制台：https://nls-portal.console.aliyun.com/applist
 
 #以下代码会根据音频文件内容反复进行一句话识别
@@ -174,11 +176,13 @@ class TestSr:
 
 
     def __test_run(self):
+        global token
+        getToken()
         print("thread:{} start..".format(self.__id))
         
         sr = nls.NlsSpeechRecognizer(
                     url=URL,
-                    token=TOKEN,
+                    token=token,
                     appkey=APPKEY,
                     on_start=self.test_on_start,
                     on_result_changed=self.test_on_result_chg,
