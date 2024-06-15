@@ -271,7 +271,7 @@ void collectAndSendAudio() {
 
             // 设置HTTP请求头
             http.begin(serverAddress);
-             
+            http.addHeader("Content-Type", "application/octet-stream");
             
             // 发送音频数据
             int httpResponseCode = http.POST(sample_buffer, SAMPLE_SIZE);
