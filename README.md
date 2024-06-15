@@ -27,8 +27,9 @@ export PATH="/root/miniconda3/bin:$PATH"
 source ~/.bashrc  
 ```
 # 安装ffmpeg
+```
 sudo apt install ffmpeg  
-
+```
 
 # 安装阿里云服务sdk 
 ```
