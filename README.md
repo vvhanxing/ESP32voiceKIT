@@ -24,7 +24,7 @@ source ~/.bashrc
 sudo apt install ffmpeg  
 
 
-
-
+# 安装阿里云服务sdk
 git clone https://github.com/aliyun/alibabacloud-nls-python-sdk.git
 githubfast镜像：https://githubfast.com/
+cd alibabacloud-nls-python-sdk && pip install -r requments.txt && pip install .
