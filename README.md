@@ -39,3 +39,11 @@ cd alibabacloud-nls-python-sdk
 pip install -r requments.txt 
 pip install . 
 ```
+
+## 安装TUMX
+```
+sudo apt install tmux
+tmux
+tmux attach
+
+```
