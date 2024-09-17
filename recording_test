@@ -1,0 +1,205 @@
+import wave
+import numpy as np
+from flask import Flask
+from flask_socketio import SocketIO, emit
+from pydub import AudioSegment
+
+
+
+app = Flask(__name__)
+app.secret_key = 'your_secret_key'
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+# 音频参数
+SAMPLE_RATE = 16000
+CHANNELS = 1
+SAMPLE_WIDTH = 2
+audio_data = []
+last_sequence_number = -1  # 记录上一个数据包的序列号
+
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+    emit('response', {'message': 'Connected to WebSocket server'})
+
+@socketio.on('audio_data')
+def handle_audio_data(data):
+    global last_sequence_number
+    sequence_number = data["sequence_number"]
+    audio_samples = np.array(data["samples"], dtype=np.int16)
+
+    print(f'Received sequence number: {sequence_number}')
+
+    # 检查是否有丢包情况
+    if last_sequence_number != -1 and sequence_number != last_sequence_number + 1:
+        missing_packets = sequence_number - last_sequence_number - 1
+        print(f'Warning: {missing_packets} packets were lost!')
+        # 填充丢失的包（可以使用静音数据填充）
+        audio_data.extend([0] * len(audio_samples) * missing_packets)
+
+    # 将音频数据加入缓存
+    audio_data.extend(audio_samples)
+
+    last_sequence_number = sequence_number
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client disconnected')
+    
+    # 保存音频数据为wav文件
+    save_wav_file('output.wav', audio_data)
+    print('Audio file saved')
+
+def save_wav_file(filename, audio_data):
+    with wave.open(filename, 'w') as wf:
+        wf.setnchannels(CHANNELS)
+        wf.setsampwidth(SAMPLE_WIDTH)
+        wf.setframerate(SAMPLE_RATE)
+        wf.writeframes(np.array(audio_data, dtype=np.int16).tobytes())
+
+        # 读取 .wav 文件
+        audio = AudioSegment.from_wav("output.wav")
+
+        # 增大音量（增大 6 dB）
+        louder_audio = audio + 30  # 每 6 dB 代表音量加倍
+
+        # 保存增大音量后的文件
+        louder_audio.export("output.wav", format="wav")
+
+
+
+@app.route('/')
+def index():
+    return "WebSocket server is running"
+
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=5002, debug=True)
+
+
+
+
+
+
+
+
+# #include <WiFi.h>
+# #include <WiFiMulti.h>
+# #include <WiFiClientSecure.h>
+# #include <WebSocketsClient_Generic.h>
+# #include <SocketIOclient_Generic.h>
+# #include <driver/i2s.h>
+# #include <ArduinoJson.h>
+
+# WiFiMulti WiFiMulti;
+# SocketIOclient socketIO;
+
+# IPAddress serverIP(118,31,40,215);  // 服务器IP  serverIP(192, 168, 43, 220); 
+# uint16_t serverPort = 80;             // WebSocket 服务器端口
+
+# #define I2S_WS 8
+# #define I2S_SD 13
+# #define I2S_SCK 7
+# #define I2S_PORT I2S_NUM_0
+# #define bufferLen 512  // 增加缓冲区以发送更多数据
+
+# int16_t sBuffer[bufferLen];
+# uint32_t sequenceNumber = 0;  // 序列号
+
+# char ssid[] = "HUAWEI P50 Pro";  // WiFi 名称
+# char pass[] = "12345678";        // WiFi 密码
+
+# void socketIOEvent(const socketIOmessageType_t& type, uint8_t *payload, const size_t& length) {
+#   switch (type) {
+#     case sIOtype_DISCONNECT:
+#       Serial.println("[IOc] Disconnected");
+#       break;
+#     case sIOtype_CONNECT:
+#       Serial.print("[IOc] Connected to url: ");
+#       Serial.println((char*) payload);
+#       socketIO.send(sIOtype_CONNECT, "/");
+#       break;
+#     case sIOtype_EVENT:
+#       Serial.print("[IOc] Get event: ");
+#       Serial.println((char*) payload);
+#       break;
+#     default:
+#       break;
+#   }
+# }
+
+# void i2s_install() {
+#   const i2s_config_t i2s_config = {
+#     .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),
+#     .sample_rate = 16000,  // 采样率设置为16kHz
+#     .bits_per_sample = i2s_bits_per_sample_t(16),
+#     .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+#     .communication_format = I2S_COMM_FORMAT_I2S_MSB,
+#     .intr_alloc_flags =  ESP_INTR_FLAG_LEVEL1,
+#     .dma_buf_count = 8,
+#     .dma_buf_len = bufferLen,
+#     .use_apll = false
+#   };
+#   i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL);
+# }
+
+# void i2s_setpin() {
+#   const i2s_pin_config_t pin_config = {
+#     .bck_io_num = I2S_SCK,
+#     .ws_io_num = I2S_WS,
+#     .data_out_num = -1,
+#     .data_in_num = I2S_SD
+#   };
+#   i2s_set_pin(I2S_PORT, &pin_config);
+# }
+
+# void setup() {
+#   Serial.begin(115200);
+#   delay(200);
+
+#   WiFiMulti.addAP(ssid, pass);
+#   while (WiFiMulti.run() != WL_CONNECTED) {
+#     Serial.print(".");
+#     delay(500);
+#   }
+#   Serial.println("\nWiFi connected");
+
+#   socketIO.begin(serverIP, serverPort);
+#   socketIO.onEvent(socketIOEvent);
+
+#   i2s_install();
+#   i2s_setpin();
+#   i2s_start(I2S_PORT);
+# }
+# DynamicJsonDocument doc(1024*2);
+# String output;
+# void loop() {
+#   socketIO.loop();
+
+#   size_t bytesIn = 0;
+#   esp_err_t result = i2s_read(I2S_PORT, &sBuffer, bufferLen, &bytesIn, portMAX_DELAY);
+
+#   if (result == ESP_OK) {
+#     int samples_read = bytesIn / 2;
+#     if (samples_read > 0) {
+      
+#       JsonArray array = doc.to<JsonArray>();
+
+#       array.add("audio_data");
+
+#       JsonObject dataObject = array.createNestedObject();
+#       dataObject["sequence_number"] = sequenceNumber++;  // 添加序列号
+
+#       JsonArray dataArray = dataObject.createNestedArray("samples");
+#       for (int i = 0; i < samples_read; ++i) {
+#         dataArray.add(sBuffer[i]);
+#       }
+
+      
+#       serializeJson(doc, output);
+#       socketIO.sendEVENT(output);
+
+#       // Serial.print("Audio data sent with sequence number: ");
+#       // Serial.println(sequenceNumber - 1);
+#     }
+#   }
+# }
