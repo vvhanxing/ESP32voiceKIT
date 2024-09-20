@@ -164,17 +164,18 @@ void loopURLaudio() {
     delay(1000);
     play_mp3_ready = false;
     isRecording = false;
+    have_positive = false;
   }
 }
 
 void i2s_RX_install() {
   const i2s_config_t i2s_config = {
     .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),
-    .sample_rate = 16000,  // 采样率16kHz
-    .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,  // is fixed at 12bit, stereo, MSB
-    .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
+    .sample_rate = 16000,  // 采样率设置为16kHz
+    .bits_per_sample = i2s_bits_per_sample_t(16),
+    .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
     .communication_format = I2S_COMM_FORMAT_I2S_MSB,
-    .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
+    .intr_alloc_flags =  ESP_INTR_FLAG_LEVEL1,
     .dma_buf_count = 8,
     .dma_buf_len = bufferLen,
     .use_apll = false
@@ -217,19 +218,7 @@ void setup() {
 
 
 
-  const i2s_config_t i2s_config = {
-    .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),
-    .sample_rate = 16000,  // 采样率16kHz
-    .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,  // is fixed at 12bit, stereo, MSB
-    .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
-    .communication_format = I2S_COMM_FORMAT_I2S_MSB,
-    .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-    .dma_buf_count = 8,
-    .dma_buf_len = bufferLen,
-    .use_apll = false
-  };
 
-  i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
 
 
 }
@@ -286,13 +275,14 @@ void collectAndSendAudio() {
         lastSoundTime = millis();
         if (!isRecording) {
           startRecording();
-          have_positive = false;
+   
         }
       }
 
       // 如果正在录音，且超过2秒没有声音，则停止录音
       if (isRecording && millis() - lastSoundTime > maxSilence) {
         stopRecording();
+        
         
       }
 
