@@ -27,8 +27,8 @@ char pass[] = "ziroomer002";  // WiFi 密码       "12345678"
 bool isRecording = false;           // 当前是否正在录音
 unsigned long silenceDuration = 0;  // 记录静音持续时间
 unsigned long lastSoundTime = 0;
-const unsigned long maxSilence = 1500;  // 最大静音时间 2 秒
-const float threshold = 400;           // 声音阈值
+const unsigned long maxSilence = 200;  // 最大静音时间 2 秒
+const float threshold = 200;           // 声音阈值
 
 
 
