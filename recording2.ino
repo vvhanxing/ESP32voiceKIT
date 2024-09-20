@@ -141,7 +141,7 @@ void initURLaudio() {
   buff = new AudioFileSourceBuffer(file, 1024);
   buff->RegisterStatusCB(StatusCallback, (void *)"buffer");
   out = new AudioOutputI2S();
-  out->SetGain(0.5);           //设置音量
+  out->SetGain(1.0);           //设置音量
   out->SetPinout(11, 12, 10);  //设置接到MAX98357A的引脚, GPIO12(串行时钟SCK)-->SCLK, GPIO26(字选择WS)-->LRC, GPIO13(串行数据SD)-->DIN
   mp3 = new AudioGeneratorMP3();
   mp3->RegisterStatusCB(StatusCallback, (void *)"mp3");
@@ -171,10 +171,10 @@ void i2s_RX_install() {
   const i2s_config_t i2s_config = {
     .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),
     .sample_rate = 16000,  // 采样率16kHz
-    .bits_per_sample = i2s_bits_per_sample_t(16),
-    .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+    .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,  // is fixed at 12bit, stereo, MSB
+    .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
     .communication_format = I2S_COMM_FORMAT_I2S_MSB,
-    .intr_alloc_flags = 0,
+    .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
     .dma_buf_count = 8,
     .dma_buf_len = bufferLen,
     .use_apll = false
@@ -189,6 +189,7 @@ void i2s_RX_install() {
     .data_in_num = I2S_SD
   };
   i2s_set_pin(I2S_NUM_0, &pin_config);
+  i2s_start(I2S_NUM_0);
 }
 
 
@@ -196,7 +197,12 @@ void i2s_RX_install() {
 
 
 void setup() {
+#ifdef DEBUG_SERIAL
   Serial.begin(115200);
+  delay(1000);
+  Serial.println("Connecting to WiFi");
+#endif
+
   delay(200);
 
   WiFiMulti.addAP(ssid, pass);
@@ -209,7 +215,23 @@ void setup() {
   socketIO.begin(serverIP, serverPort);
   socketIO.onEvent(socketIOEvent);
 
-  i2s_RX_install();
+
+
+  const i2s_config_t i2s_config = {
+    .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),
+    .sample_rate = 16000,  // 采样率16kHz
+    .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,  // is fixed at 12bit, stereo, MSB
+    .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
+    .communication_format = I2S_COMM_FORMAT_I2S_MSB,
+    .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
+    .dma_buf_count = 8,
+    .dma_buf_len = bufferLen,
+    .use_apll = false
+  };
+
+  i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
+
+
 }
 
 void startRecording() {
@@ -249,6 +271,7 @@ void collectAndSendAudio() {
       float mean = 0;
       for (int i = 0; i < samples_read; ++i) {
         mean += abs(sBuffer[i]);
+        // Serial.println(sBuffer[i]);
      
         if (sBuffer[i] > 200) {
           have_positive = true;
@@ -263,13 +286,14 @@ void collectAndSendAudio() {
         lastSoundTime = millis();
         if (!isRecording) {
           startRecording();
+          have_positive = false;
         }
       }
 
       // 如果正在录音，且超过2秒没有声音，则停止录音
       if (isRecording && millis() - lastSoundTime > maxSilence) {
         stopRecording();
-        have_positive = false;
+        
       }
 
       // 录音过程中发送音频数据
