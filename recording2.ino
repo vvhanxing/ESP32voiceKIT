@@ -21,13 +21,17 @@ uint16_t serverPort = 80;              // WebSocket 服务器端口
 int16_t sBuffer[bufferLen];
 uint32_t sequenceNumber = 0;  // 序列号
 
-char ssid[] = "ziroom 502";   // WiFi 名称      "HUAWEI P50 Pro"
-char pass[] = "ziroomer002";  // WiFi 密码       "12345678"
+char ssid[] = "HUAWEI P50 Pro";   // WiFi 名称      "HUAWEI P50 Pro"
+char pass[] = "12345678";  // WiFi 密码       "12345678"
+
+// const char *ssid = "HUAWEI P50 Pro"; // Enter your SSID here
+// const char *password = "12345678";   // Enter your Password here
+
 
 bool isRecording = false;           // 当前是否正在录音
 unsigned long silenceDuration = 0;  // 记录静音持续时间
 unsigned long lastSoundTime = 0;
-const unsigned long maxSilence = 200;  // 最大静音时间 2 秒
+const unsigned long maxSilence = 2000;  // 最大静音时间 2 秒
 const float threshold = 200;           // 声音阈值
 
 
@@ -35,7 +39,6 @@ const float threshold = 200;           // 声音阈值
 
 bool play_mp3_ready = false;
 bool strat_init_audio = true;
-
 bool have_positive = false;
 
 
@@ -248,6 +251,8 @@ void stopRecording() {
 
   socketIO.sendEVENT(output);  // 发送事件到后端
 }
+
+
 DynamicJsonDocument doc(1024);
 
 void collectAndSendAudio() {
@@ -258,6 +263,8 @@ void collectAndSendAudio() {
     int samples_read = bytesIn / 2;
     if (samples_read > 0) {
       float mean = 0;
+
+      
       for (int i = 0; i < samples_read; ++i) {
         mean += abs(sBuffer[i]);
         // Serial.println(sBuffer[i]);
