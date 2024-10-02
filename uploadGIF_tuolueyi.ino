@@ -485,7 +485,7 @@ void displaySavedGIF() {
     float angleZ = mpu6050.getAngleZ();
 
     // Map angleZ from -90 to 90 to frame index from 0 to 15
-    int frameIndex = map(constrain(angleZ, -90, 90), -90, 90, 0, 15);
+    int frameIndex = map(constrain(angleZ, -180, 180), -180, 180, 0, 31);
     Serial.print("Current Frame Index: ");
     Serial.println(frameIndex);
 
@@ -548,7 +548,7 @@ void setup(void)
     // The decoder must be given the exact name of the rendering function above
     TJpgDec.setCallback(tft_output);
 
-    int pic_length = 16;
+
 
 
     Wire.begin(SDA_PIN, SCL_PIN);
