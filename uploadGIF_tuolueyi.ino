@@ -485,7 +485,7 @@ void displaySavedGIF() {
     float angleZ = mpu6050.getAngleZ();
 
     // Map angleZ from -90 to 90 to frame index from 0 to 15
-    int frameIndex = map(constrain(angleZ, -180, 180), -180, 180, 0, 31);
+    int frameIndex = map(constrain(angleZ, -90, 90), -90, 90, 0, 35);
     Serial.print("Current Frame Index: ");
     Serial.println(frameIndex);
 
