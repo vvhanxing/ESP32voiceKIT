@@ -485,7 +485,7 @@ void displaySavedGIF() {
     float angleZ = mpu6050.getAngleZ();
 
     // Map angleZ from -90 to 90 to frame index from 0 to 15
-    int frameIndex = map(constrain(angleZ, -90, 90), -90, 90, 0, 35);
+    int frameIndex = map(abs((int)angleZ%180), 0, 180, 0, 35);
     Serial.print("Current Frame Index: ");
     Serial.println(frameIndex);
 
@@ -501,7 +501,7 @@ void displaySavedGIF() {
         file.read(frame_1, fileSize);
         file.close();
 
-        int pos_y = 240 - frame_info[2]; // Adjust height if needed
+        int pos_y = 20+240 - frame_info[2]; // Adjust height if needed
         TJpgDec.drawJpg(0, (int)(abs(pos_y) / 2), frame_1, sizeof(frame_1));
     }
 }
@@ -549,7 +549,7 @@ void setup(void)
     TJpgDec.setCallback(tft_output);
 
 
-
+    screenInfo("Hello", 50, 110, 4);
 
     Wire.begin(SDA_PIN, SCL_PIN);
     mpu6050.begin();
