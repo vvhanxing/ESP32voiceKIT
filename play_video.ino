@@ -1,6 +1,22 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <SD.h>
+
+
+
+
+// #define TWOPART 
+#include <MPU6050_tockn.h>
+#include <Wire.h>
+MPU6050 mpu6050(Wire);
+#define FORMAT_LITTLEFS_IF_FAILED true
+#define SCL_PIN 13
+#define SDA_PIN 12
+
+
+
+
+
 ///
 #define COLOR_BACKGROUND TFT_WHITE
 #define COLOR_TEXT       TFT_BLACK
@@ -190,7 +206,6 @@ void setup() {
 
   tft.init();
   tft.setRotation(0);
-  tft.fillScreen(TFT_WHITE);
 
   // The jpeg image can be scaled by a factor of 1, 2, 4, or 8
   TJpgDec.setJpgScale(1);
@@ -214,7 +229,7 @@ void setup() {
   Serial.println("Initializing SD card...");
   
   // 初始化SD卡，如果初始化失败则打印错误信息并返回
-  if (!SD.begin(CS, CustomSPI, 4000000))
+  if (!SD.begin(CS, CustomSPI, 8000000))
   {
     Serial.println("initialization failed!");
     return;
@@ -229,29 +244,41 @@ void setup() {
 
   //打印读取到的内容
   Serial.println("Reading from test.txt");
-
-
   tft.fillScreen(TFT_BLACK);
+
+
+  screenInfo("INIT...",0,0,4);
   
-  
+  Wire.begin(SDA_PIN, SCL_PIN);
+  mpu6050.begin();
+  mpu6050.calcGyroOffsets(true);  
 
 
 }
 
 void loop() {
-    listDir(SD,"/move1",0);  
-    String sysPath = "/move1/";
-    int frame = 1;
-    
+ 
+    String sysPath = "/move2/";
+    float angleZ = 0 ;
+    int frameIndex = 1;
+    int angleIndex = 1;
+
+ 
     while (true) {
+
+        mpu6050.update();
+        angleZ = mpu6050.getAngleZ();
+        // Map angleZ from -90 to 90 to frame index from 0 to 15
+        angleIndex = (int)(36*2*abs(  atan(tan(  angleZ/(36.5f*PI) ))  )/PI);   
         // Construct the filename for the current frame
-        String filename = sysPath + String(frame) + ".bin";
-        
+        String filename = sysPath + String(angleIndex)+"/" +String(frameIndex)+ ".bin";
         // Draw the binary frame from SD card
         draw_pic_bin(filename.c_str());
+        frameIndex+=1;
+        if (frameIndex>22)  frameIndex=1;
+        
 
-        // Increment frame index, loop back to 1 if it exceeds 30
-        frame = (frame % fileIndex) + 1;
+     
     }
 
 }
