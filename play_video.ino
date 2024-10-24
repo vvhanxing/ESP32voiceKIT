@@ -159,7 +159,7 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap)
   return 1;
 }
 #include "arduino_base64.hpp"
-uint8_t frame_0[1024*32 ] PROGMEM ={0};
+uint8_t frame_0[1024*34 ] PROGMEM ={0};
 size_t fileSize = sizeof(frame_0);
 
 void draw_pic_base64(char* pic_name){
@@ -262,6 +262,7 @@ void loop() {
     float angleZ = 0 ;
     int frameIndex = 1;
     int angleIndex = 1;
+    listDir(SD, "/move2/0", 0);
 
  
     while (true) {
@@ -269,16 +270,17 @@ void loop() {
         mpu6050.update();
         angleZ = mpu6050.getAngleZ();
         // Map angleZ from -90 to 90 to frame index from 0 to 15
-        angleIndex = (int)(36*2*abs(  atan(tan(  angleZ/(36.5f*PI) ))  )/PI);   
+        angleIndex = (int)(72*2*abs(  atan(tan(  angleZ/(73*PI) ))  )/PI);   
         // Construct the filename for the current frame
+        
         String filename = sysPath + String(angleIndex)+"/" +String(frameIndex)+ ".bin";
         // Draw the binary frame from SD card
         draw_pic_bin(filename.c_str());
-        frameIndex+=1;
-        if (frameIndex>22)  frameIndex=1;
-        
 
-     
+        frameIndex+=1;
+        
+        if (frameIndex>fileIndex)  frameIndex=1;
+  
     }
 
 }
