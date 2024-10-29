@@ -7,7 +7,7 @@
 #include <Wire.h>
 
 
-String sysPath = "/move2/";
+String sysPath = "/2/";
 
 
 
@@ -39,9 +39,9 @@ void listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
     if (!root || !root.isDirectory()) return;
     File file = root.openNextFile();
     while (file) {
-        if (file.isDirectory()) {
-            dirList[dirIndex] = file.name();
-            dirIndex+=1;
+        if (file.isDirectory() || file.name()!="System Volume Information") {
+            dirList[dirIndex++] = file.name();
+          
         }
         file = root.openNextFile();
     }
@@ -55,8 +55,8 @@ void listFile(fs::FS &fs, const char *dirname, uint8_t levels) {
     File file = root.openNextFile();
     while (file) {
         if (!file.isDirectory()) {
-            fileList[fileIndex] = file.name();
-            fileIndex+=1;
+            fileList[fileIndex++] = file.name();
+          
         }
         file = root.openNextFile();
     }
@@ -146,13 +146,17 @@ void displayTask(void *parameter) {
   for (;;) {
 
 
-      if (buttonPressed==true){
-        listFile(SD, ( "/"+ String(dirList[pageIndex/2])+"/"+"1").c_str(), 0);
-        sysPath = "/"+ String(dirList[pageIndex/2])+"/";
-        buttonPressed = false;
-      }
+
       
       if (dirList[pageIndex/2]!="System Volume Information") {
+
+
+        if (buttonPressed==true){
+          
+          listFile(SD, ( "/"+ String(dirList[pageIndex/2])+"/"+"1").c_str(), 0);
+          sysPath = "/"+ String(dirList[pageIndex/2])+"/";
+          buttonPressed = false;
+        }
 
         mpu6050.update();
         angleZ = mpu6050.getAngleZ();
@@ -164,20 +168,20 @@ void displayTask(void *parameter) {
       }
       else{
 
-      tft.setTextColor(TFT_GREEN, TFT_BLACK);
-      tft.setTextSize(3);
+        tft.setTextColor(TFT_GREEN, TFT_BLACK);
+        tft.setTextSize(3);
 
-      // 在屏幕中央显示pageIndex的值
-      tft.setCursor(40, 80);
-      tft.printf("Page: %d  ", int(pageIndex/2));
-      tft.setCursor(40, 100);
-      tft.printf("%s  ",dirList[pageIndex/2]);
+        // 在屏幕中央显示pageIndex的值
+        tft.setCursor(40, 80);
+        tft.printf("Page: %d  ", int(pageIndex/2));
+        tft.setCursor(40, 100);
+        tft.printf("%s  ",dirList[pageIndex/2]);
 
       }
 
 
 
-      vTaskDelay(pdMS_TO_TICKS(2));  // 每200ms更新一次显示
+      vTaskDelay(pdMS_TO_TICKS(20));  // 每200ms更新一次显示
   }
 }
 ///////////////////////////////
@@ -222,7 +226,7 @@ void setup() {
 
 
     // 增大任务堆栈大小到 4096 字节
-    xTaskCreatePinnedToCore(displayTask, "DisplayTask", 1024 * 38, NULL, 1, &displayTaskHandle, 0);
+    xTaskCreatePinnedToCore(displayTask, "DisplayTask", 1024 * 40, NULL, 1, &displayTaskHandle, 0);
 }
 
 void loop() {
