@@ -7,7 +7,7 @@
 #include <Wire.h>
 
 
-String sysPath = "/2/";
+String sysPath = "/3d/2/";
 
 
 
@@ -22,7 +22,7 @@ MPU6050 mpu6050(Wire);
 SPIClass CustomSPI;
 File myFile;
 
-uint8_t frame_0[1024 * 36] PROGMEM = {0};
+uint8_t frame_0[1024 * 40] PROGMEM = {0};
 size_t fileSize = sizeof(frame_0);
 int frameIndex = 1, angleIndex = 1;
 float angleZ = 0;
@@ -39,7 +39,7 @@ void listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
     if (!root || !root.isDirectory()) return;
     File file = root.openNextFile();
     while (file) {
-        if (file.isDirectory() || file.name()!="System Volume Information") {
+        if (file.isDirectory() && file.name()!="System Volume Information") {
             dirList[dirIndex++] = file.name();
           
         }
@@ -142,48 +142,9 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap) 
 
 String filename = "";
 // FreeRTOS任务：更新屏幕显示
-void displayTask(void *parameter) {
-  for (;;) {
+// void displayTask(void *parameter) {
 
-
-
-      
-      if (dirList[pageIndex/2]!="System Volume Information") {
-
-
-        if (buttonPressed==true){
-          
-          listFile(SD, ( "/"+ String(dirList[pageIndex/2])+"/"+"1").c_str(), 0);
-          sysPath = "/"+ String(dirList[pageIndex/2])+"/";
-          buttonPressed = false;
-        }
-
-        mpu6050.update();
-        angleZ = mpu6050.getAngleZ();
-        //angleIndex = (int)(72 * 2 * abs(atan(tan(angleZ / (73 * PI)))) / PI);
-        angleIndex = (int)(36+72  * atan(tan(-2*angleZ / (73 * PI)))/ PI) ;
-        filename = String(sysPath) + String(angleIndex) + "/" + String(frameIndex) + ".bin";
-        draw_pic_bin(filename.c_str());
-        frameIndex = (frameIndex + 1) % fileIndex;
-      }
-      else{
-
-        tft.setTextColor(TFT_GREEN, TFT_BLACK);
-        tft.setTextSize(3);
-
-        // 在屏幕中央显示pageIndex的值
-        tft.setCursor(40, 80);
-        tft.printf("Page: %d  ", int(pageIndex/2));
-        tft.setCursor(40, 100);
-        tft.printf("%s  ",dirList[pageIndex/2]);
-
-      }
-
-
-
-      vTaskDelay(pdMS_TO_TICKS(20));  // 每200ms更新一次显示
-  }
-}
+// }
 ///////////////////////////////
 
 
@@ -198,6 +159,7 @@ void setup() {
 
 
     tft.fillScreen(TFT_BLACK);
+    tft.setTextSize(2);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.setCursor(0, 50);
     tft.println("Init sd...");
@@ -207,12 +169,14 @@ void setup() {
         return;
     }
     
-    listDir(SD, "/", 0);
+    listDir(SD, "/3d", 0);
     tft.setCursor(0, 50);
     tft.println("Init mpu6050...");
     Wire.begin(SDA_PIN, SCL_PIN);
     mpu6050.begin();
     mpu6050.calcGyroOffsets(true);
+    tft.setCursor(0, 50);
+    tft.println("Init SIQ-02FVS3...");
 
 
     // 初始化旋转编码器引脚
@@ -226,10 +190,67 @@ void setup() {
 
 
     // 增大任务堆栈大小到 4096 字节
-    xTaskCreatePinnedToCore(displayTask, "DisplayTask", 1024 * 40, NULL, 1, &displayTaskHandle, 0);
+    // xTaskCreatePinnedToCore(displayTask, "DisplayTask", 1024 * 40, NULL, 1, &displayTaskHandle, 0);
 }
 
 void loop() {
+  for (;;) {
 
+
+
+      
+      if (dirList[pageIndex/2]!="System Volume Information") {
+
+
+        if (buttonPressed==true){
+          
+          listFile(SD, ( "/3d/"+ String(dirList[pageIndex/2])+"/"+"1").c_str(), 0);
+          sysPath = "/3d/"+ String(dirList[pageIndex/2])+"/";
+          if (pageIndex/2>fileIndex) pageIndex=0;
+          tft.fillScreen(TFT_BLACK);
+          buttonPressed = false;
+        }
+
+
+  
+        if (int(pageIndex/2)!=0){
+
+          // tft.setCursor(0, 80);
+          // tft.printf("Page: %d  ", int(pageIndex/2));
+
+          
+          // tft.setCursor(0, 100);
+          // tft.printf("Dir name %s  ","3d/"+ String(dirList[pageIndex/2])+"/");
+
+          // tft.setCursor(0, 120);
+          // tft.printf("Total dir num%d  ",dirIndex );
+
+          // tft.setCursor(0, 140);
+          // tft.printf("%d  ",fileIndex);
+
+
+          mpu6050.update();
+          angleZ = mpu6050.getAngleZ();
+          //angleIndex = (int)(72 * 2 * abs(atan(tan(angleZ / (73 * PI)))) / PI);
+          angleIndex = (int)(36+72  * atan(tan(-2*angleZ / (73 * PI)))/ PI) ;
+          filename = String(sysPath) + String(angleIndex) + "/" + String(frameIndex) + ".bin";
+          draw_pic_bin(filename.c_str());
+          frameIndex = (frameIndex + 1) % fileIndex;
+
+
+        }
+        else{
+          tft.setCursor(0, 80);
+          tft.printf("Page: %d  ", int(pageIndex/2));
+
+        }
+
+
+      }
+
+
+
+      // vTaskDelay(pdMS_TO_TICKS(20));  // 每200ms更新一次显示
+  }
     // delay(10);  // 控制刷新率，50ms 约为 20 FPS
 }
