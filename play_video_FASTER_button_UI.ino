@@ -106,13 +106,33 @@ void displayTimeAndWeather(){
 
 }
 
+void displayMain(){
+
+
+      // 显示时间
+      // tft.fillRect(0, 0, 240, 120, TFT_BLACK);
+      tft.setTextColor(TFT_WHITE, TFT_BLACK);  
+      tft.setTextSize(2);
+      tft.setCursor(25, 30);
+      tft.println("Hello,");
+      tft.setTextSize(2);
+      tft.setCursor(10, 100);
+      tft.println("");   
+
+
+
+
+
+}
+
+
 bool httpGET(const char* url, String &payload) {
   HTTPClient http;
   http.begin(url);
   
   
   int attempts = 0;
-  while (attempts < 4) { // 重试四次
+  while (attempts < 6) { 
     int httpResponseCode = http.GET();
     if (httpResponseCode == 200) {
       payload = http.getString();
@@ -330,20 +350,20 @@ void displayTask() {
           if (String(premillis).substring(0,3)=="900" && String(premillis).length()==5)
           {
         
-          // tft.setCursor(20, 50);
-          // tft.setTextSize(2);
+ 
           getTimeAndWeather();  
           
-          // tft.printf("World");     
+     
           }
-          displayTimeAndWeather();
+
+          if(WiFi.status() == WL_CONNECTED) displayTimeAndWeather();
+          else displayMain();
           
           
 
-          tft.setCursor(20, 200);
-          tft.printf(String(premillis).c_str());  
-          // tft.setTextSize(2);
-          // tft.printf("Hello");          
+          // tft.setCursor(20, 200);
+          //tft.printf(String(premillis).c_str());  
+      
 
 
 
@@ -451,18 +471,14 @@ void setup() {
 
 
     tft.fillScreen(TFT_BLACK);
-    tft.println("Get time...");
-    tft.fillScreen(TFT_BLACK);
-    getTimeAndWeather();
-    displayTimeAndWeather();
-    // tft.println();
-    // tft.print("-");
-    // tft.print(wifiInfo[0]);
-    // tft.print("-");
-    // tft.println();
-    // tft.print("-");
-    // tft.print(wifiInfo[1]);
-    // tft.print("-");
+    tft.setCursor(25, 60);
+    
+ 
+    if(WiFi.status() == WL_CONNECTED){
+      tft.println("Get time...       ");
+      getTimeAndWeather();
+      displayTimeAndWeather();
+    }
 
 
 
