@@ -12,8 +12,9 @@
 
 TFT_eSPI tft = TFT_eSPI();   // 初始化TFT屏幕
 // WiFi配置
-const char* ssid = "HUAWEI P50 Pro";
-const char* password = "12345678";
+const char* ssid ="";
+
+const char* password="";
 
 // API配置
 const char* timeApiUrl = "https://quan.suning.com/getSysTime.do";
@@ -25,7 +26,7 @@ void connectToWiFi() {
   tft.setCursor(0, 60);
   tft.println("Connecting to WiFi...");
   
-  WiFi.begin(ssid, password);
+  WiFi.begin( ssid ,  password);
   
   unsigned long startAttemptTime = millis();
   
@@ -273,6 +274,7 @@ void IRAM_ATTR handleButtonPress() {
 }
 ////////////////////////////////////////
 
+/////////////////////////////////////
 void draw_pic_bin(const char *pic_name) {
     myFile = SD.open(pic_name, FILE_READ);
     if (myFile) {
@@ -437,6 +439,13 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(PIN_SW), handleButtonPress, CHANGE);
     tft.setCursor(0, 60);
 
+    DynamicJsonDocument wifiInfoDoc(1024);
+    String wifiInfoString =  readFile(SD,"/wifi.txt");
+    deserializeJson(wifiInfoDoc, wifiInfoString);
+
+
+    ssid = wifiInfoDoc["ssid"];
+    password = wifiInfoDoc["password"];
 
     connectToWiFi();
 
@@ -446,6 +455,15 @@ void setup() {
     tft.fillScreen(TFT_BLACK);
     getTimeAndWeather();
     displayTimeAndWeather();
+    // tft.println();
+    // tft.print("-");
+    // tft.print(wifiInfo[0]);
+    // tft.print("-");
+    // tft.println();
+    // tft.print("-");
+    // tft.print(wifiInfo[1]);
+    // tft.print("-");
+
 
 
 
