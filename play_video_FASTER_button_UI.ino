@@ -11,10 +11,16 @@ String sysPath = "";
 
 
 
-#define CS 7
-#define MOSI_PIN 8
-#define SCK_PIN 9
-#define MISO_PIN 10
+// #define CS 7
+// #define MOSI_PIN 8
+// #define SCK_PIN 9
+// #define MISO_PIN 10
+#define CS 8
+#define MOSI_PIN 9
+#define SCK_PIN 10
+#define MISO_PIN 11
+
+
 #define SDA_PIN 12
 #define SCL_PIN 13
 
@@ -236,35 +242,46 @@ void loop() {
           frameIndex = 1;
           if (pageIndex/2>fileIndex) pageIndex=0;
           tft.fillScreen(TFT_BLACK);
-
-
-          tft.setCursor(0, 20);
-          tft.printf("Page: %d  ", int(pageIndex/2));
+          // tft.setCursor(0, 20);
+          // tft.printf("Page: %d  ", int(pageIndex/2));
 
 
 
           buttonPressed = false;
         }
 
+        if (int(pageIndex/2)==0) {
 
+          tft.setCursor(0, 80);
+          tft.setTextSize(6);
+          tft.printf("14:30");
+          tft.setCursor(0, 150);
+          tft.setTextSize(2);
+          tft.printf("2024/11/04");
+
+
+
+
+
+
+        }
   
         if (int(pageIndex/2)!=0){
 
 
+          // tft.setCursor(0, 50);
+          // tft.printf("info %d  ",fileIndex);          
+          // tft.setCursor(0, 100);
+          // tft.printf("Dir name %s:  ","3d/"+ String(dirList[pageIndex/2])+"/");
+          // tft.setCursor(0, 120);
+          // tft.printf("Total dir num: %d ",dirIndex );
 
-          tft.setCursor(0, 50);
-          tft.printf("info %d  ",fileIndex);          
-          tft.setCursor(0, 100);
-          tft.printf("Dir name %s:  ","3d/"+ String(dirList[pageIndex/2])+"/");
-          tft.setCursor(0, 120);
-          tft.printf("Total dir num: %d ",dirIndex );
-
-          for (int i=0;i<dirIndex;i++){
-            tft.setCursor(0, 140+i*15);
-            // tft.printf("Dir name: %s",dirList[i] );
-            if ( String(dirList[pageIndex/2])== String(dirList[i])) tft.printf(">Dir name: %s  ",dirList[i] );
-            else tft.printf(" Dir name: %s",dirList[i] );
-          }
+          // for (int i=0;i<dirIndex;i++){
+          //   tft.setCursor(0, 140+i*15);
+          //   // tft.printf("Dir name: %s",dirList[i] );
+          //   if ( String(dirList[pageIndex/2])== String(dirList[i])) tft.printf(">Dir name: %s  ",dirList[i] );
+          //   else tft.printf(" Dir name: %s",dirList[i] );
+          // }
 
 
 
