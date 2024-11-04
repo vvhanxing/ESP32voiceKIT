@@ -6,19 +6,140 @@
 #include <MPU6050_tockn.h>
 #include <Wire.h>
 
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
 
-String sysPath = "";
+TFT_eSPI tft = TFT_eSPI();   // 初始化TFT屏幕
+// WiFi配置
+const char* ssid = "HUAWEI P50 Pro";
+const char* password = "12345678";
+
+// API配置
+const char* timeApiUrl = "https://quan.suning.com/getSysTime.do";
+const char* weatherApiUrl = "https://api.openweathermap.org/data/2.5/weather?q=shanghai&appid=658767b0ae936b022f59a69f44868419&units=metric";
+
+void connectToWiFi() {
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);  
+  tft.setTextSize(2);
+  tft.setCursor(0, 60);
+  tft.println("Connecting to WiFi...");
+  
+  WiFi.begin(ssid, password);
+  
+  unsigned long startAttemptTime = millis();
+  
+  while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 3000) {
+    delay(500);
+    tft.print(".");
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    tft.println("\nWiFi connected");
+  } else {
+    tft.fillScreen(TFT_BLACK); // 清屏
+    tft.setTextColor(TFT_RED, TFT_BLACK);  
+    tft.setTextSize(2);
+    tft.setCursor(0, 60);
+    tft.println("Not WiFi connected");
+  }
+}
+String time_string ="";
+String date_string = "";
+float temperature = 24.0f;
+String weatherDescription = "";
+void getTimeAndWeather() {
+  if (WiFi.status() == WL_CONNECTED) {
+    // 获取时间
+    String timePayload;
+    if (httpGET(timeApiUrl, timePayload)) {
+      DynamicJsonDocument timeDoc(1024);
+      deserializeJson(timeDoc, timePayload);
+      String dateTime = timeDoc["sysTime2"];
+      time_string = dateTime.substring(11, 16); // 提取时间部分
+      date_string = dateTime.substring(0, 10); // 提取时间部分
+
+   
+    }
+
+    // 获取天气
+    String weatherPayload;
+    if (httpGET(weatherApiUrl, weatherPayload)) {
+      DynamicJsonDocument weatherDoc(2048); // 增加文档大小
+      deserializeJson(weatherDoc, weatherPayload);
+      temperature = weatherDoc["main"]["temp"];
+      weatherDescription = weatherDoc["weather"][0]["description"].as<String>();
+
+
+    }
+
+  } 
+}
+
+
+void displayTimeAndWeather(){
+
+
+      // 显示时间
+      // tft.fillRect(0, 0, 240, 120, TFT_BLACK);
+      tft.setTextColor(TFT_WHITE, TFT_BLACK);  
+      tft.setTextSize(6);
+      tft.setCursor(25, 30);
+      tft.println(time_string);
+      tft.setTextSize(2);
+      tft.setCursor(10, 100);
+      tft.println(date_string);   
+      // 显示天气信息
+      // tft.fillRect(0, 120, 240, 160, TFT_BLACK); // 清除天气区域
+      tft.setTextColor(TFT_WHITE, TFT_BLACK);  
+      tft.setTextSize(2);
+      tft.setCursor(10, 120);
+      //tft.print("Temp: ");
+      tft.print(temperature);
+      tft.println(" C");
+      tft.setTextSize(2);
+      tft.setCursor(10, 140);
+      //tft.print("Weather: ");
+      tft.println(weatherDescription);
+
+
+}
+
+bool httpGET(const char* url, String &payload) {
+  HTTPClient http;
+  http.begin(url);
+  
+  
+  int attempts = 0;
+  while (attempts < 4) { // 重试四次
+    int httpResponseCode = http.GET();
+    if (httpResponseCode == 200) {
+      payload = http.getString();
+      http.end();
+      return true;
+    } else {
+      Serial.printf("HTTP GET failed, error code: %d\n", httpResponseCode);
+      delay(2000); // 等待两秒后重试
+    }
+    attempts++;
+  }
+  
+  http.end();
+  return false;
+}
+
+String sysPath = "/3d/0/";
 
 
 
-// #define CS 7
-// #define MOSI_PIN 8
-// #define SCK_PIN 9
-// #define MISO_PIN 10
-#define CS 8
-#define MOSI_PIN 9
-#define SCK_PIN 10
-#define MISO_PIN 11
+#define CS 7
+#define MOSI_PIN 8
+#define SCK_PIN 9
+#define MISO_PIN 10
+// #define CS 8
+// #define MOSI_PIN 9
+// #define SCK_PIN 10
+// #define MISO_PIN 11
 
 
 #define SDA_PIN 12
@@ -28,7 +149,7 @@ MPU6050 mpu6050(Wire);
 SPIClass CustomSPI;
 File myFile;
 
-uint8_t frame_0[1024 * 40] PROGMEM = {0};
+uint8_t frame_0[1024 * 38] PROGMEM = {0};
 size_t fileSize = sizeof(frame_0);
 int frameIndex = 1, angleIndex = 1;
 float angleZ = 0;
@@ -100,7 +221,7 @@ String readFile(fs::FS &fs, const char *path)
 #define PIN_B 16   // B 相信号
 #define PIN_SW 15  // 按键信号
 
-TFT_eSPI tft = TFT_eSPI();   // 初始化TFT屏幕
+
 int pageIndex = 0;           // 当前页面索引变量
 bool buttonPressed = false;  // 按键状态标志
 
@@ -109,7 +230,7 @@ volatile int lastA = 0, lastB = 0;
 
 // 创建FreeRTOS任务句柄
 TaskHandle_t displayTaskHandle;
-
+TaskHandle_t displaytimeTaskHandle;
 void IRAM_ATTR handleRotation() {
   int A = digitalRead(PIN_A);
   int B = digitalRead(PIN_B);
@@ -172,59 +293,9 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap) 
 
 String filename = "";
 // FreeRTOS任务：更新屏幕显示
-// void displayTask(void *parameter) {
-
-// }
-///////////////////////////////
+void displayTask() {
 
 
-
-void setup() {
-    Serial.begin(115200);
-    tft.init();
-    tft.setRotation(0);
-    TJpgDec.setJpgScale(1);
-    TJpgDec.setSwapBytes(true);
-    TJpgDec.setCallback(tft_output);
-
-
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextSize(2);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.setCursor(0, 50);
-    tft.println("Init sd...");
-    CustomSPI.begin(SCK_PIN, MISO_PIN, MOSI_PIN, CS);
-    if (!SD.begin(CS, CustomSPI, 8000000)) {
-        Serial.println("SD initialization failed!");
-        return;
-    }
-    
-    listDir(SD, "/3d", 0);
-    tft.setCursor(0, 50);
-    tft.println("Init mpu6050...");
-    Wire.begin(SDA_PIN, SCL_PIN);
-    mpu6050.begin();
-    mpu6050.calcGyroOffsets(true);
-    tft.setCursor(0, 50);
-    tft.println("Init SIQ-02FVS3...");
-
-
-    // 初始化旋转编码器引脚
-    pinMode(PIN_A, INPUT_PULLUP);
-    pinMode(PIN_B, INPUT_PULLUP);
-    pinMode(PIN_SW, INPUT_PULLUP);
-
-    // 注册旋转编码器与按键的中断服务
-    attachInterrupt(digitalPinToInterrupt(PIN_A), handleRotation, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(PIN_SW), handleButtonPress, CHANGE);
-    tft.println("                              ");
-
-
-    // 增大任务堆栈大小到 4096 字节
-    // xTaskCreatePinnedToCore(displayTask, "DisplayTask", 1024 * 40, NULL, 1, &displayTaskHandle, 0);
-}
-
-void loop() {
   for (;;) {
 
 
@@ -252,15 +323,25 @@ void loop() {
 
         if (int(pageIndex/2)==0) {
 
-          tft.setCursor(0, 80);
-          tft.setTextSize(6);
-          tft.printf("14:30");
-          tft.setCursor(0, 150);
-          tft.setTextSize(2);
-          tft.printf("2024/11/04");
+          // unsigned long  previousmillis = millis(); 
+          long unsigned int premillis = millis()%100000;
+          if (String(premillis).substring(0,3)=="900" && String(premillis).length()==5)
+          {
+        
+          // tft.setCursor(20, 50);
+          // tft.setTextSize(2);
+          getTimeAndWeather();  
+          
+          // tft.printf("World");     
+          }
+          displayTimeAndWeather();
+          
+          
 
-
-
+          tft.setCursor(20, 200);
+          tft.printf(String(premillis).c_str());  
+          // tft.setTextSize(2);
+          // tft.printf("Hello");          
 
 
 
@@ -288,7 +369,7 @@ void loop() {
           mpu6050.update();
           angleZ = mpu6050.getAngleZ();
           //angleIndex = (int)(72 * 2 * abs(atan(tan(angleZ / (73 * PI)))) / PI);
-          angleIndex = (int)(36+72  * atan(tan(-2*angleZ / (73 * PI)))/ PI) ;
+          angleIndex = (int)(36+72  * atan(tan(2*angleZ / (73 * PI)))/ PI) ;
           filename = String(sysPath) + String(angleIndex) + "/" + String(frameIndex) + ".bin";
           draw_pic_bin(filename.c_str());
           frameIndex = (frameIndex + 1) % fileIndex;
@@ -304,5 +385,76 @@ void loop() {
 
       // vTaskDelay(pdMS_TO_TICKS(20));  // 每200ms更新一次显示
   }
+
+
+
+
+}
+
+
+
+///////////////////////////////
+
+
+
+void setup() {
+    Serial.begin(115200);
+    tft.init();
+    tft.setRotation(4);
+    TJpgDec.setJpgScale(1);
+    TJpgDec.setSwapBytes(true);
+    TJpgDec.setCallback(tft_output);
+
+
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setCursor(0, 60);
+    tft.println("Init sd...");
+    CustomSPI.begin(SCK_PIN, MISO_PIN, MOSI_PIN, CS);
+    if (!SD.begin(CS, CustomSPI, 8000000)) {
+        Serial.println("SD initialization failed!");
+        return;
+    }
+    
+    listDir(SD, "/3d", 0);
+    tft.setCursor(0, 60);
+    tft.println("Init mpu6050...");
+    Wire.begin(SDA_PIN, SCL_PIN);
+    mpu6050.begin();
+    mpu6050.calcGyroOffsets(true);
+    tft.setCursor(0, 60);
+    tft.println("Init SIQ-02FVS3...");
+
+
+    // 初始化旋转编码器引脚
+    pinMode(PIN_A, INPUT_PULLUP);
+    pinMode(PIN_B, INPUT_PULLUP);
+    pinMode(PIN_SW, INPUT_PULLUP);
+
+    // 注册旋转编码器与按键的中断服务
+    attachInterrupt(digitalPinToInterrupt(PIN_A), handleRotation, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(PIN_SW), handleButtonPress, CHANGE);
+    tft.setCursor(0, 60);
+
+
+    connectToWiFi();
+
+
+    tft.fillScreen(TFT_BLACK);
+    tft.println("Get time...");
+    tft.fillScreen(TFT_BLACK);
+    getTimeAndWeather();
+    displayTimeAndWeather();
+
+
+
+    // 增大任务堆栈大小到 4096 字节
+    // xTaskCreatePinnedToCore(displayTask, "DisplayTask", 1024 * 40, NULL, 1, &displayTaskHandle, 0);
+    // xTaskCreatePinnedToCore(displayTime, "DisplayTime", 1024 * 2, NULL, 1, NULL, 1);
+}
+
+void loop() {
+     displayTask();
     // delay(10);  // 控制刷新率，50ms 约为 20 FPS
 }
