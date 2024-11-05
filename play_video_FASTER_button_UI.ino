@@ -18,7 +18,7 @@ const char* password="";
 
 // API配置
 const char* timeApiUrl = "https://quan.suning.com/getSysTime.do";
-const char* weatherApiUrl = "https://api.openweathermap.org/data/2.5/weather?q=shanghai&appid=658767b0ae936b022f59a69f44868419&units=metric";
+const char* weatherApiUrl = "http://api.openweathermap.org/data/2.5/weather?q=shanghai&appid=658767b0ae936b022f59a69f44868419&units=metric";
 
 void connectToWiFi() {
   tft.setTextColor(TFT_WHITE, TFT_BLACK);  
@@ -66,11 +66,11 @@ void getTimeAndWeather() {
     // 获取天气
     String weatherPayload;
     if (httpGET(weatherApiUrl, weatherPayload)) {
-      DynamicJsonDocument weatherDoc(2048); // 增加文档大小
+      
+      DynamicJsonDocument weatherDoc(1024); // 增加文档大小
       deserializeJson(weatherDoc, weatherPayload);
       temperature = weatherDoc["main"]["temp"];
       weatherDescription = weatherDoc["weather"][0]["description"].as<String>();
-
 
     }
 
@@ -140,7 +140,7 @@ bool httpGET(const char* url, String &payload) {
       return true;
     } else {
       Serial.printf("HTTP GET failed, error code: %d\n", httpResponseCode);
-      delay(2000); // 等待两秒后重试
+      delay(1000); // 等待两秒后重试
     }
     attempts++;
   }
@@ -172,13 +172,18 @@ File myFile;
 
 uint8_t frame_0[1024 * 38] PROGMEM = {0};
 size_t fileSize = sizeof(frame_0);
-int frameIndex = 1, angleIndex = 1;
+int frameIndex = 1;
+int angleZIndex = 1;
+int angleYIndex = 1;
+String frameType = "movie";
 float angleZ = 0;
+float angleY =0;
 
 
 String fileList[512] = {""};
 String dirList[512] = {""};
 int fileIndex = 0;
+int frameCount = 1;
 int dirIndex = 0;
 
 void listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
@@ -329,11 +334,15 @@ void displayTask() {
         if (buttonPressed==true){
           
           // listFile(SD, ( "/3d/"+ String(dirList[pageIndex/2])+"/"+"1").c_str(), 0);
-          String info =  readFile(SD,( "/3d/"+ String(dirList[pageIndex/2])+"/info.txt").c_str());
-          fileIndex = info.toInt();
+          String infoPayload = readFile(SD, ("/3d/" + String(dirList[pageIndex/2]) + "/info.txt").c_str());
+          DynamicJsonDocument infoDoc(1024);  // Increase document size
+          deserializeJson(infoDoc, infoPayload);
+          frameCount = infoDoc["frameCount"];
+
           sysPath = "/3d/"+ String(dirList[pageIndex/2])+"/";
           frameIndex = 1;
-          if (pageIndex/2>fileIndex) pageIndex=0;
+          frameType = infoDoc["type"].as<String>();
+          if (pageIndex/2>frameCount) pageIndex=0;
           tft.fillScreen(TFT_BLACK);
           // tft.setCursor(0, 20);
           // tft.printf("Page: %d  ", int(pageIndex/2));
@@ -347,7 +356,7 @@ void displayTask() {
 
           // unsigned long  previousmillis = millis(); 
           long unsigned int premillis = millis()%100000;
-          if (String(premillis).substring(0,3)=="900" && String(premillis).length()==5)
+          if ( (  String(premillis).substring(0,3)=="450"  || String(premillis).substring(0,3)=="900") && String(premillis).length()==5)
           {
         
  
@@ -361,8 +370,8 @@ void displayTask() {
           
           
 
-          // tft.setCursor(20, 200);
-          //tft.printf(String(premillis).c_str());  
+          tft.setCursor(20, 200);
+          tft.printf(String(premillis).c_str());  
       
 
 
@@ -373,7 +382,7 @@ void displayTask() {
 
 
           // tft.setCursor(0, 50);
-          // tft.printf("info %d  ",fileIndex);          
+          // tft.printf("info %d  ",frameCount);          
           // tft.setCursor(0, 100);
           // tft.printf("Dir name %s:  ","3d/"+ String(dirList[pageIndex/2])+"/");
           // tft.setCursor(0, 120);
@@ -389,13 +398,26 @@ void displayTask() {
 
 
           mpu6050.update();
-          angleZ = mpu6050.getAngleZ();
-          //angleIndex = (int)(72 * 2 * abs(atan(tan(angleZ / (73 * PI)))) / PI);
-          angleIndex = (int)(36+72  * atan(tan(2*angleZ / (73 * PI)))/ PI) ;
-          filename = String(sysPath) + String(angleIndex) + "/" + String(frameIndex) + ".bin";
-          draw_pic_bin(filename.c_str());
-          frameIndex = (frameIndex + 1) % fileIndex;
-
+          if (frameType=="movie")
+          {
+            angleZ = mpu6050.getAngleZ();
+            //angleZIndex = (int)(72 * 2 * abs(atan(tan(angleZ / (73 * PI)))) / PI);
+            angleZIndex = (int)(36+72  * atan(tan(2*angleZ / (73 * PI)))/ PI) ;
+            filename = String(sysPath) + String(angleZIndex) + "/" + String(frameIndex) + ".bin";
+            draw_pic_bin(filename.c_str());
+            frameIndex = (frameIndex + 1) % frameCount;
+          }
+          else
+          {
+            angleZ = mpu6050.getAngleZ();
+            angleY = mpu6050.getAngleY();
+      
+            angleZIndex = (int)(36+72  * atan(tan(2*angleZ / (73 * PI)))/ PI) ;
+            angleYIndex = (int)(18+36  * atan(tan(2*angleY / (73 * PI)))/ PI) ;
+            filename = String(sysPath) + String(angleZIndex) + "/" + String(angleYIndex) + ".bin";
+            draw_pic_bin(filename.c_str());
+    
+          }
 
         }
 
