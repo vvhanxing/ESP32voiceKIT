@@ -178,7 +178,7 @@ int angleYIndex = 1;
 String frameType = "movie";
 float angleZ = 0;
 float angleY =0;
-
+int detailLevel = 72;
 
 String fileList[512] = {""};
 String dirList[512] = {""};
@@ -338,11 +338,12 @@ void displayTask() {
           DynamicJsonDocument infoDoc(1024);  // Increase document size
           deserializeJson(infoDoc, infoPayload);
           frameCount = infoDoc["frameCount"];
+          detailLevel = infoDoc["detailLevel"];
 
           sysPath = "/3d/"+ String(dirList[pageIndex/2])+"/";
           frameIndex = 1;
           frameType = infoDoc["type"].as<String>();
-          if (pageIndex/2>frameCount) pageIndex=0;
+          if (pageIndex/2>dirIndex) pageIndex=0;
           tft.fillScreen(TFT_BLACK);
           // tft.setCursor(0, 20);
           // tft.printf("Page: %d  ", int(pageIndex/2));
@@ -402,22 +403,22 @@ void displayTask() {
           {
             angleZ = mpu6050.getAngleZ();
             //angleZIndex = (int)(72 * 2 * abs(atan(tan(angleZ / (73 * PI)))) / PI);
-            angleZIndex = (int)(36+72  * atan(tan(2*angleZ / (73 * PI)))/ PI) ;
+            angleZIndex = (int)(detailLevel*0.5+ detailLevel*atan(tan(2*angleZ / (73 * PI)))/ PI) ;
             filename = String(sysPath) + String(angleZIndex) + "/" + String(frameIndex) + ".bin";
             draw_pic_bin(filename.c_str());
             frameIndex = (frameIndex + 1) % frameCount;
           }
-          else
-          {
-            angleZ = mpu6050.getAngleZ();
-            angleY = mpu6050.getAngleY();
+          // else
+          // {
+          //   angleZ = mpu6050.getAngleZ();
+          //   angleY = mpu6050.getAngleY();
       
-            angleZIndex = (int)(36+72  * atan(tan(2*angleZ / (73 * PI)))/ PI) ;
-            angleYIndex = (int)(18+36  * atan(tan(2*angleY / (73 * PI)))/ PI) ;
-            filename = String(sysPath) + String(angleZIndex) + "/" + String(angleYIndex) + ".bin";
-            draw_pic_bin(filename.c_str());
+          //   angleZIndex = 36*(int)(1+2  * atan(tan(2*angleZ / (73 * PI)))/ PI) ;
+          //   angleYIndex = (int)(18+36  * atan(tan(2*angleY / (73 * PI)))/ PI) ;
+          //   filename = String(sysPath) + String(angleZIndex) + "/" + String(angleYIndex) + ".bin";
+          //   draw_pic_bin(filename.c_str());
     
-          }
+          // }
 
         }
 
