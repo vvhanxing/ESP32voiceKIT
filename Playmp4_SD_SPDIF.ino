@@ -19,10 +19,11 @@ AudioFileSourceSD *source = NULL;
 AudioOutputI2S *output = NULL;
 //AudioGeneratorFLAC *decoder = NULL;
 AudioGeneratorWAV *decoder = NULL;
-
+File picFile;
 File myFile;
-uint8_t frame_0[1024 * 38] PROGMEM = {0};
+uint8_t frame_0[1024 * 32] PROGMEM = {0};
 size_t fileSize = sizeof(frame_0);
+
 File pic_dir;
 File wav_dir;
 
@@ -34,29 +35,27 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap) 
 
 void draw_pic_bin_task(void *pvParameters) {
     while (1) {
-        File picFile = pic_dir.openNextFile();
+        picFile = pic_dir.openNextFile();
         if (picFile) {
             if (String(picFile.name()).endsWith(".bin")) {
-                myFile = SD.open(("/output/" + String(picFile.name())).c_str(), FILE_READ);
-                if (myFile) {
-                    myFile.read(frame_0, fileSize);
-                    TJpgDec.drawJpg(0, 0, frame_0, fileSize);
-                    myFile.close();
+                size_t bytesRead = picFile.readBytes((char *)frame_0, fileSize); // 使用 readBytes 提高读取效率
+                if (bytesRead > 0) {
+                    TJpgDec.drawJpg(0, 0, frame_0, bytesRead);
                 } else {
-                    Serial.println("Error opening binary file:");
-                    Serial.println(picFile.name());
+                    Serial.printf("Error reading binary file: %s\n", picFile.name());
                 }
+                picFile.close();
             }
         } else {
             pic_dir.rewindDirectory(); // Rewind directory for loop playback
         }
-        delay(100); // Delay to control frame rate
+        vTaskDelay(5 / portTICK_PERIOD_MS); // 减小延迟提升帧率
     }
 }
 
 void playwav_task(void *pvParameters) {
     while (1) {
-        if ((decoder) && (decoder->isRunning())) {
+        if (decoder && decoder->isRunning()) {
             if (!decoder->loop()) decoder->stop();
         } else {
             File file = wav_dir.openNextFile();
@@ -64,23 +63,25 @@ void playwav_task(void *pvParameters) {
                 if (String(file.name()).endsWith(".wav")) {
                     source->close();
                     if (source->open(("/" + String(file.name())).c_str())) {
-                        Serial.printf_P(PSTR("Playing '%s' from SD card...\n"), file.name());
+                        Serial.printf("Playing '%s' from SD card...\n", file.name());
                         decoder->begin(source, output);
                     } else {
-                        Serial.printf_P(PSTR("Error opening '%s'\n"), file.name());
+                        Serial.printf("Error opening '%s'\n", file.name());
                     }
                 }
+                file.close(); // 确保关闭文件释放资源
             } else {
                 wav_dir.rewindDirectory(); // Rewind directory for loop playback
             }
         }
-        delay(10); // Small delay to prevent task starvation
+        vTaskDelay(10 / portTICK_PERIOD_MS); // 防止任务抢占过多CPU
     }
 }
 
 void setup() {
     Serial.begin(115200);
     delay(1000);
+
 
     tft.init();
     tft.setRotation(0);
@@ -106,7 +107,7 @@ void setup() {
     #if defined(ESP8266)
         SD.begin(SS, SPI_SPEED);
     #else
-        if (!SD.begin(CS, CustomSPI, 8000000)) {
+        if (!SD.begin(CS, CustomSPI, 20000000)) {
             Serial.println("SD card initialization failed!");
         } else {
             Serial.println("SD card initialized successfully.");
@@ -117,8 +118,8 @@ void setup() {
     wav_dir = SD.open("/");
 
     // Create tasks for video and audio
-    xTaskCreatePinnedToCore(playwav_task, "PlayWAV", 4096, NULL, 0, NULL, 0);
-    xTaskCreatePinnedToCore(draw_pic_bin_task, "DrawPic", 4096, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(playwav_task, "PlayWAV", 1024*4, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(draw_pic_bin_task, "DrawPic", 1024*8, NULL, 2, NULL, 0);
 }
 
 void loop() {
