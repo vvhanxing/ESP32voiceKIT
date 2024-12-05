@@ -20,8 +20,8 @@ AudioOutputI2S *output = NULL;
 //AudioGeneratorFLAC *decoder = NULL;
 AudioGeneratorWAV *decoder = NULL;
 File picFile;
-File myFile;
-uint8_t frame_0[1024 * 32] PROGMEM = {0};
+File wevFile;
+uint8_t frame_0[1024 * 36] PROGMEM = {0};
 size_t fileSize = sizeof(frame_0);
 
 File pic_dir;
@@ -49,7 +49,7 @@ void draw_pic_bin_task(void *pvParameters) {
         } else {
             pic_dir.rewindDirectory(); // Rewind directory for loop playback
         }
-        vTaskDelay(5 / portTICK_PERIOD_MS); // 减小延迟提升帧率
+        vTaskDelay(1 / portTICK_PERIOD_MS); // 减小延迟提升帧率
     }
 }
 
@@ -58,18 +58,18 @@ void playwav_task(void *pvParameters) {
         if (decoder && decoder->isRunning()) {
             if (!decoder->loop()) decoder->stop();
         } else {
-            File file = wav_dir.openNextFile();
-            if (file) {
-                if (String(file.name()).endsWith(".wav")) {
+            wevFile = wav_dir.openNextFile();
+            if (wevFile) {
+                if (String(wevFile.name()).endsWith(".wav")) {
                     source->close();
-                    if (source->open(("/" + String(file.name())).c_str())) {
-                        Serial.printf("Playing '%s' from SD card...\n", file.name());
+                    if (source->open(("/output/" + String(wevFile.name())).c_str())) {
+                        Serial.printf("Playing '%s' from SD card...\n", wevFile.name());
                         decoder->begin(source, output);
                     } else {
-                        Serial.printf("Error opening '%s'\n", file.name());
+                        Serial.printf("Error opening '%s'\n", wevFile.name());
                     }
                 }
-                file.close(); // 确保关闭文件释放资源
+                wevFile.close(); // 确保关闭文件释放资源
             } else {
                 wav_dir.rewindDirectory(); // Rewind directory for loop playback
             }
@@ -87,7 +87,9 @@ void setup() {
     tft.setRotation(0);
     tft.fillScreen(TFT_BLACK);
     TJpgDec.setJpgScale(1);
-    TJpgDec.setSwapBytes(true);
+    TJpgDec.setSwapBytes(true);// 必须启用以匹配屏幕颜色顺序
+// tft.writecommand(0x26); // 设置伽马
+// tft.writedata(0x04);    // 选择伽马曲线
     TJpgDec.setCallback(tft_output);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.setTextSize(2);
@@ -107,15 +109,15 @@ void setup() {
     #if defined(ESP8266)
         SD.begin(SS, SPI_SPEED);
     #else
-        if (!SD.begin(CS, CustomSPI, 20000000)) {
+        if (!SD.begin(CS, CustomSPI, 40000000)) {
             Serial.println("SD card initialization failed!");
         } else {
             Serial.println("SD card initialized successfully.");
         }
     #endif
 
-    pic_dir = SD.open("/output");
-    wav_dir = SD.open("/");
+    pic_dir = SD.open("/output/frames");
+    wav_dir = SD.open("/output");
 
     // Create tasks for video and audio
     xTaskCreatePinnedToCore(playwav_task, "PlayWAV", 1024*4, NULL, 1, NULL, 1);
