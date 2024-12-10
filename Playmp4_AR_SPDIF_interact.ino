@@ -22,9 +22,7 @@ SPIClass CustomSPI;
 #define SCL_PIN 13
 MPU6050 mpu6050(Wire);
 
-
 #define USE_DMA
-// Include the array
 
 // Include the jpeg decoder library
 #include <TJpg_Decoder.h>
@@ -38,21 +36,6 @@ MPU6050 mpu6050(Wire);
 #include "SPI.h"
 #include <TFT_eSPI.h>              // Hardware-specific library
 TFT_eSPI tft = TFT_eSPI();         // Invoke custom library
-
-
-
-AudioFileSourceSD *source = NULL;
-AudioOutputI2S *output = NULL;
-// AudioGeneratorFLAC *decoder = NULL;
-AudioGeneratorWAV *decoder = NULL;
-File picFile;
-File wevFile;
-uint8_t frame_0[1024 * 36] PROGMEM = {0};
-size_t fileSize = sizeof(frame_0);
-
-File pic_dir;
-File wav_dir;
-
 
 // This next function will be called during decoding of the jpeg file to render each
 // 16x16 or 8x8 image tile (Minimum Coding Unit) to the TFT.
@@ -85,55 +68,15 @@ bool tft_output_dma(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitm
   return 1;
 }
 
-
-
-bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap) {
-    if (y >= tft.height()) return false;
-    tft.pushImage(x, y, w, h, bitmap); // 使用 pushImage 而非 pushImageDMA
-    return true;
-}
-void draw_pic_bin_task(void *pvParameters) {
-    while (1) {
-        picFile = pic_dir.openNextFile();
-        if (picFile) {
-            if (String(picFile.name()).endsWith(".bin")) {
-                size_t bytesRead = picFile.readBytes((char *)frame_0, fileSize);
-                if (bytesRead > 0) {
-                    tft.startWrite();
-                    TJpgDec.drawJpg(0, 0, frame_0, bytesRead);
-                    tft.endWrite();
-                } else {
-                    Serial.printf("Error reading binary file: %s\n", picFile.name());
-                }
-                picFile.close();
-            }
-        } else {
-            pic_dir.rewindDirectory(); // 循环播放
-        }
-        vTaskDelay(2 / portTICK_PERIOD_MS);
-    }
-}
-
-void draw_pic_bin(const char *pic_name) {
-    picFile = SD.open(pic_name, FILE_READ);
-    if (picFile) {
-                size_t bytesRead = picFile.readBytes((char *)frame_0, fileSize);
-                if (bytesRead > 0) {
-                  tft.startWrite();
-                  TJpgDec.drawJpg(0, 0, frame_0, bytesRead);
-                  tft.endWrite();
-                } else {
-                    Serial.printf("Error reading binary file: %s\n", picFile.name());
-                }
-        picFile.close();
-    } else {
-        Serial.println("Error opening binary file:");
-        Serial.println(pic_name);
-    }
-}
-
-
-/////////////////////////////////////
+AudioFileSourceSD *source = NULL;
+AudioOutputI2S *output = NULL;
+// AudioGeneratorFLAC *decoder = NULL;
+AudioGeneratorWAV *decoder = NULL;
+File picFile;
+File wav_dir;
+File wevFile;
+uint8_t frame_0[1024 * 36] PROGMEM = {0};
+size_t fileSize = sizeof(frame_0);
 
 int frameCount = 1;
 int detailLevel = 72;
@@ -171,82 +114,62 @@ String readFile(fs::FS &fs, const char *path)
     return result;
 }
 
-
-
-
-int clickA_push_count = 0;
-int clickA_once_count = 0;
+String animater_clip_list[3] = {"/3d/9", "/3d/10", "/3d/9"};
 int animater_clip_index = 0;
-String animater_clip_list[2] = {"/3d/9/","/3d/10/"};
-void draw_AR_task(void *pvParameters) {
-    while (1) {
-    mpu6050.update();
 
-    angleZ = mpu6050.getAngleZ();
-    angleZIndex = (int)(detailLevel*0.5+ detailLevel*atan(tan(2*angleZ / ((detailLevel+2) * PI)))/ PI) ;
-
-
-
-  if(clickA()){
-      clickA_push_count = clickA_push_count+1;
-      if (clickA_push_count==2){ //短按
-        clickA_once_count +=1;
-          
-        }
-      if (clickA_push_count==10){//长按
-        clickA_once_count -=2;
-        }
-       Serial.println(clickA_push_count);
-       
+void stopAudio() {
+    if (decoder && decoder->isRunning()) {
+        decoder->stop();  // Stop currently playing audio
+        delay(500);  // Ensure the audio stops properly
     }
-    else{
-      clickA_push_count = 1;
-      tft.setCursor(120, 20); 
-      // tft.print(clickA_once_count);    // Print the font name onto the TFT screen  
-      if (clickA_once_count>1) clickA_once_count=0;
-      animater_clip_index = clickA_once_count;   
-
-      
-      sysPath = animater_clip_list[animater_clip_index];
-      String infoPayload = readFile(SD, (sysPath+"info.txt").c_str());
-      DynamicJsonDocument infoDoc(1024);  // Increase document size
-      deserializeJson(infoDoc, infoPayload);
-      frameCount = infoDoc["frameCount"];
-      detailLevel = infoDoc["detailLevel"];    
-      // Serial.println(sysPath);
-        
-    }
-    
-
-
-    filename = String(sysPath) + String(angleZIndex) + "/" + String(frameIndex) + ".bin";
-    draw_pic_bin(filename.c_str());
-    frameIndex = (frameIndex + 1) % frameCount;
-    if (sysPath=="/3d/10/"  && frameIndex==frameCount-1)
-    {
-      clickA_once_count = 0;
-      
-    }
-
-
-    Serial.println(frameIndex);
-    Serial.println(frameCount);
-    Serial.println(sysPath);
-
-
-
-
-
-
-
-    }
-    vTaskDelay(2 / portTICK_PERIOD_MS);
-
-
 }
 
-////////////////////////////////////////
+void startNewAudio(const String &audioPath) {
+    source->close();
+    if (source->open(audioPath.c_str())) {
+        Serial.printf("Playing '%s' from SD card...\n", audioPath.c_str());
+        decoder->begin(source, output);
+    } else {
+        Serial.printf("Error opening '%s'\n", audioPath.c_str());
+    }
+}
 
+void draw_pic_bin(const char *pic_name) {
+    picFile = SD.open(pic_name, FILE_READ);
+    if (picFile) {
+        size_t bytesRead = picFile.readBytes((char *)frame_0, fileSize);
+        if (bytesRead > 0) {
+            tft.startWrite();
+            TJpgDec.drawJpg(0, 0, frame_0, bytesRead);
+            tft.endWrite();
+        } else {
+            Serial.printf("Error reading binary file: %s\n", picFile.name());
+        }
+        picFile.close();
+    } else {
+        Serial.println("Error opening binary file:");
+        Serial.println(pic_name);
+    }
+}
+
+bool clickA() {
+    const int touchPin = 7; // Using T0 to get data
+    const int threshold = 20000;
+    int touchValue = touchRead(touchPin);
+    return touchValue > threshold;
+}
+
+void draw_AR_task(void *pvParameters) {
+    while (1) {
+        mpu6050.update();
+        angleZ = mpu6050.getAngleZ();
+        angleZIndex = (int)(detailLevel * 0.5 + detailLevel * atan(tan(2 * angleZ / ((detailLevel + 2) * PI))) / PI);
+        filename = String(sysPath) + "/" + String(angleZIndex) + "/" + String(frameIndex) + ".bin";
+        draw_pic_bin(filename.c_str());
+        frameIndex = (frameIndex + 1) % frameCount;
+        vTaskDelay(2 / portTICK_PERIOD_MS);
+    }
+}
 
 void playwav_task(void *pvParameters) {
     while (1) {
@@ -257,7 +180,7 @@ void playwav_task(void *pvParameters) {
             if (wevFile) {
                 if (String(wevFile.name()).endsWith(".wav")) {
                     source->close();
-                    if (source->open(("/output/" + String(wevFile.name())).c_str())) {
+                    if (source->open((sysPath + "/" + String(wevFile.name())).c_str())) {
                         Serial.printf("Playing '%s' from SD card...\n", wevFile.name());
                         decoder->begin(source, output);
                     } else {
@@ -272,39 +195,6 @@ void playwav_task(void *pvParameters) {
         vTaskDelay(2 / portTICK_PERIOD_MS);
     }
 }
-////////////////////////////////////////
-
-bool clickA(){
-
-   const int touchPin = 7; // 使用 T0 获取数据
-   const int threshold = 20000;
-   // variable for storing the touch pin value 
-   int touchValue;
-  // read the state of the pushbutton value:
-  touchValue = touchRead(touchPin);
-  // Serial.println(touchValue);
-  //Serial.print("\n");
-
-  // check if the touchValue is below the threshold
-  // if it is, set ledPin to HIGH
-  if(touchValue > threshold){
-    // turn LED on
-    //digitalWrite(ledPin, HIGH);
-     //Serial.println("有触控，灯亮");
-    return true;
-  }
-  else{
-    // turn LED off
-    //digitalWrite(ledPin, LOW);
-    //Serial.println(" - LED off");
-    return false;
-  }
-  //delay(500);  
-  }
-
-  //////////
-
-
 
 void setup() {
     Serial.begin(115200);
@@ -314,14 +204,11 @@ void setup() {
     tft.fillScreen(TFT_BLACK);
 
 #ifdef USE_DMA
-  tft.initDMA(); // To use SPI DMA you must call initDMA() to setup the DMA engine
+    tft.initDMA(); // To use SPI DMA you must call initDMA() to setup the DMA engine
 #else
-  tft.init();
-  
+    tft.init();
 #endif
     tft.setRotation(4);
-
-
     TJpgDec.setJpgScale(1);
     TJpgDec.setSwapBytes(true); // 必须启用以匹配屏幕颜色顺序
     TJpgDec.setCallback(tft_output_dma);
@@ -356,31 +243,30 @@ void setup() {
 
     tft.fillScreen(TFT_BLACK);
 
-    pic_dir = SD.open("/output/frames");
-    wav_dir = SD.open("/output");
-
-
-
-    String filename = "";
-    sysPath = "/3d/9/";    
-    String infoPayload = readFile(SD, (sysPath+"info.txt").c_str());
+    animater_clip_index = 1;
+    sysPath = animater_clip_list[animater_clip_index];
+    String infoPayload = readFile(SD, (sysPath + "/" + "info.txt").c_str());
     DynamicJsonDocument infoDoc(1024);  // Increase document size
     deserializeJson(infoDoc, infoPayload);
     frameCount = infoDoc["frameCount"];
     detailLevel = infoDoc["detailLevel"];
-
     frameIndex = 1;
-  
 
-
-
+    wav_dir = SD.open(animater_clip_list[animater_clip_index]);
 
     // Create tasks for video and audio
     xTaskCreatePinnedToCore(playwav_task, "PlayWAV", 1024 * 4, NULL, 1, NULL, 0);
-    // xTaskCreatePinnedToCore(draw_pic_bin_task, "DrawPic", 1024 * 4, NULL, 2, NULL, 1);
     xTaskCreatePinnedToCore(draw_AR_task, "DrawAR", 1024 * 4, NULL, 2, NULL, 1);
 }
 
 void loop() {
-    // Loop intentionally empty as tasks handle playback and video frame rendering
+    // If the touch pin is touched, stop the current audio and switch to new audio and video path
+    if (clickA()) {
+        stopAudio(); // Stop the current audio
+        animater_clip_index = (animater_clip_index + 1) % 3; // Cycle through video clips
+        sysPath = animater_clip_list[animater_clip_index];
+        // String audioPath = sysPath + "/audio.wav";  // Define your audio path
+        // startNewAudio(audioPath);  // Start new audio
+    }
+    delay(100);  // Prevent too frequent checks
 }
