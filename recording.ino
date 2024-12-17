@@ -21,7 +21,7 @@ int16_t sBuffer[bufferLen];  // 音频数据缓冲区
 
 // 波形图设置
 #define CENTER_Y (TFT_HEIGHT / 2)      // Y轴中心
-#define SCALE_FACTOR 30                // 缩放因子，调整波形高度
+#define SCALE_FACTOR 40                // 缩放因子，调整波形高度
 #define BAR_WIDTH 4                    // 每个矩形条的宽度
 #define BAR_SPACING 1                  // 矩形条之间的间隔
 #define PEAK_DROP_SPEED 1              // 光点下落速度
@@ -30,6 +30,11 @@ int16_t sBuffer[bufferLen];  // 音频数据缓冲区
 // 峰值下落效果
 int peakPosition[TFT_WIDTH / (BAR_WIDTH + BAR_SPACING)];  // 峰值光点位置
 int barHeights[TFT_WIDTH / (BAR_WIDTH + BAR_SPACING)];    // 每个矩形条的高度
+
+// 时间和日期区域位置
+#define TIME_Y_POSITION 10  // 时间文本的Y轴位置
+#define TIME_TEXT_COLOR TFT_WHITE  // 时间文本颜色
+#define TIME_HEIGHT 40       // 时间和日期的高度
 
 void setup() {
   Serial.begin(115200);
@@ -62,10 +67,34 @@ void loop() {
   if (result == ESP_OK) {
     int samples_read = bytesIn / 2;
     if (samples_read > 0) {
-      tft.fillScreen(TFT_BLACK);  // 清屏
+      // 绘制时间和日期
+      displayTimeAndDate("12:34", "2024-12-18");
+
+      // 清除波形图区域并绘制波形
+      tft.fillRect(0, TIME_HEIGHT, TFT_WIDTH, TFT_HEIGHT - TIME_HEIGHT, TFT_BLACK);
+      if (  peakPosition[0]<100){
+        tft.fillRect(0, 0, TFT_WIDTH,TIME_HEIGHT, TFT_BLACK);
+      } 
       drawWaveform(samples_read);
     }
   }
+}
+
+// 时间和日期显示设置
+void displayTimeAndDate(const char* time, const char* date) {
+  tft.setTextColor(TIME_TEXT_COLOR);
+  tft.setTextSize(2);  // 设置文本大小
+  tft.setCursor(20+(TFT_WIDTH - 100) / 2, TIME_Y_POSITION);  // 居中显示
+
+  // 显示时间
+  tft.print("");
+  tft.println(time);
+  tft.setTextSize(1);  // 设置文本大小
+
+  // 显示日期
+  tft.setCursor(20+(TFT_WIDTH - 100) / 2, TIME_Y_POSITION + 20);
+  tft.print("");
+  tft.println(date);
 }
 
 void drawWaveform(int samples_read) {
@@ -117,7 +146,6 @@ uint16_t colorGradient(int position, int total) {
 
   return tft.color565(red, green, blue);
 }
-
 
 // I2S 配置函数
 void i2s_install() {
