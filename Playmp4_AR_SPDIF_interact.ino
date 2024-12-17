@@ -89,6 +89,25 @@ File myFile;
 
 String filename = "";
 
+String animater_clip_list[12] = {"/3d/9", "/3d/10", "/3d/9"};
+
+
+int dirIndex = 0;
+
+void listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
+    dirIndex = 0;
+    File root = fs.open(dirname);
+    if (!root || !root.isDirectory()) return;
+    File file = root.openNextFile();
+    while (file) {
+        if (file.isDirectory() && file.name()!="System Volume Information") {
+            animater_clip_list[dirIndex++] =String(dirname)+ "/"+file.name();
+          
+        }
+        file = root.openNextFile();
+    }
+}
+
 
 String readFile(fs::FS &fs, const char *path)
 {
@@ -114,7 +133,7 @@ String readFile(fs::FS &fs, const char *path)
     return result;
 }
 
-String animater_clip_list[3] = {"/3d/9", "/3d/10", "/3d/9"};
+
 int animater_clip_index = 0;
 
 void stopAudio() {
@@ -167,6 +186,14 @@ void draw_AR_task(void *pvParameters) {
         filename = String(sysPath) + "/" + String(angleZIndex) + "/" + String(frameIndex) + ".bin";
         draw_pic_bin(filename.c_str());
         frameIndex = (frameIndex + 1) % frameCount;
+            // for (int i=0;i<dirIndex;i++){
+            //   tft.setCursor(0, 140+i*15);
+        
+            //   tft.printf(" Dir name: %s",animater_clip_list[i] );
+            // }
+
+
+
         vTaskDelay(2 / portTICK_PERIOD_MS);
     }
 }
@@ -243,6 +270,10 @@ void setup() {
 
     tft.fillScreen(TFT_BLACK);
 
+    listDir(SD, "/3d", 0);
+
+
+
     animater_clip_index = 1;
     sysPath = animater_clip_list[animater_clip_index];
     String infoPayload = readFile(SD, (sysPath + "/" + "info.txt").c_str());
@@ -263,8 +294,19 @@ void loop() {
     // If the touch pin is touched, stop the current audio and switch to new audio and video path
     if (clickA()) {
         stopAudio(); // Stop the current audio
-        animater_clip_index = (animater_clip_index + 1) % 3; // Cycle through video clips
+
+
+        
+        animater_clip_index = (animater_clip_index + 1); // Cycle through video clips
+        if (animater_clip_index>=dirIndex) animater_clip_index = 0;
         sysPath = animater_clip_list[animater_clip_index];
+
+        String infoPayload = readFile(SD, (sysPath + "/" + "info.txt").c_str());
+        DynamicJsonDocument infoDoc(1024);  // Increase document size
+        deserializeJson(infoDoc, infoPayload);
+        frameCount = infoDoc["frameCount"];
+        detailLevel = infoDoc["detailLevel"];
+
         // String audioPath = sysPath + "/audio.wav";  // Define your audio path
         // startNewAudio(audioPath);  // Start new audio
     }
