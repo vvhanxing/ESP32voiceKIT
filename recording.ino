@@ -11,7 +11,7 @@ TFT_eSPI tft = TFT_eSPI();
 #define I2S_SD 10
 #define I2S_SCK 8
 #define I2S_PORT I2S_NUM_0
-#define bufferLen 240
+#define bufferLen 100
 
 int16_t sBuffer[bufferLen];  // 音频数据缓冲区
 
@@ -21,7 +21,7 @@ int16_t sBuffer[bufferLen];  // 音频数据缓冲区
 
 // 波形图设置
 #define CENTER_Y (TFT_HEIGHT / 2)      // Y轴中心
-#define SCALE_FACTOR 40                // 缩放因子，调整波形高度
+#define SCALE_FACTOR 20                // 缩放因子，调整波形高度
 #define BAR_WIDTH 4                    // 每个矩形条的宽度
 #define BAR_SPACING 1                  // 矩形条之间的间隔
 #define PEAK_DROP_SPEED 1              // 光点下落速度
@@ -35,6 +35,10 @@ int barHeights[TFT_WIDTH / (BAR_WIDTH + BAR_SPACING)];    // 每个矩形条的�
 #define TIME_Y_POSITION 10  // 时间文本的Y轴位置
 #define TIME_TEXT_COLOR TFT_WHITE  // 时间文本颜色
 #define TIME_HEIGHT 40       // 时间和日期的高度
+
+// 用于存储上一帧的波形数据
+int lastBarHeights[TFT_WIDTH / (BAR_WIDTH + BAR_SPACING)];
+int lastPeakPosition[TFT_WIDTH / (BAR_WIDTH + BAR_SPACING)];
 
 void setup() {
   Serial.begin(115200);
@@ -55,6 +59,8 @@ void setup() {
   for (int i = 0; i < TFT_WIDTH / (BAR_WIDTH + BAR_SPACING); i++) {
     peakPosition[i] = CENTER_Y;
     barHeights[i] = 0;
+    lastBarHeights[i] = 0;
+    lastPeakPosition[i] = CENTER_Y;
   }
 
   Serial.println("Setup complete...");
@@ -70,11 +76,7 @@ void loop() {
       // 绘制时间和日期
       displayTimeAndDate("12:34", "2024-12-18");
 
-      // 清除波形图区域并绘制波形
-      tft.fillRect(0, TIME_HEIGHT, TFT_WIDTH, TFT_HEIGHT - TIME_HEIGHT, TFT_BLACK);
-      if (  peakPosition[0]<100){
-        tft.fillRect(0, 0, TFT_WIDTH,TIME_HEIGHT, TFT_BLACK);
-      } 
+      // 更新波形图
       drawWaveform(samples_read);
     }
   }
@@ -115,9 +117,15 @@ void drawWaveform(int samples_read) {
       if (barHeights[i] < 0) barHeights[i] = 0;
     }
 
-    // 绘制矩形条
+    // 清除光点上方区域
+    tft.fillRect(x_pos, CENTER_Y - lastBarHeights[i], BAR_WIDTH, lastBarHeights[i], TFT_BLACK);
+
+    // 绘制新的彩色矩形条
     uint16_t barColor = colorGradient(i, numBars);
     tft.fillRect(x_pos, CENTER_Y - barHeights[i], BAR_WIDTH, barHeights[i], barColor);
+
+    // 清除之前的光点（4x4方块）
+    tft.fillRect(x_pos, lastPeakPosition[i] - 2, 4, 4, TFT_BLACK);
 
     // 峰值光点效果
     if (CENTER_Y - barHeights[i] < peakPosition[i]) {
@@ -127,8 +135,12 @@ void drawWaveform(int samples_read) {
       if (peakPosition[i] > CENTER_Y) peakPosition[i] = CENTER_Y;
     }
 
-    // 绘制光点（4x4方块）
+    // 绘制新的光点
     tft.fillRect(x_pos, peakPosition[i] - 2, 4, 4, barColor);
+
+    // 更新上一帧的矩形条和光点位置
+    lastBarHeights[i] = barHeights[i];
+    lastPeakPosition[i] = peakPosition[i];
 
     // 更新X位置
     x_pos += BAR_WIDTH + BAR_SPACING;
