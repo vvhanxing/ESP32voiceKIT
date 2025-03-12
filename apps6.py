@@ -129,12 +129,13 @@ def save_wav_file(filename, audio_data):
 #     print(stt_text)
 
 
-
+messages = [{'role': 'system', 'content': '你是一个可爱的女孩，会和用户吵架，回答用户字数在50字以内'},]
 
 
 import os
 from openai import OpenAI
 def llm(prompt):
+    global messages
     try:
         client = OpenAI(
             # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
@@ -142,15 +143,16 @@ def llm(prompt):
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
         )
 
+        messages.append(  {'role': 'user', 'content': f'{prompt}'}  )
+        if len(messages)>10:
+            messages.pop(0)
+
         completion = client.chat.completions.create(
             # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
             model="qwen-plus",
-            messages=[
-                {'role': 'system', 'content': 'You are a helpful assistant.'},
-                {'role': 'user', 'content': f'{prompt}'}
-                ]
-        )
+            messages = messages)
         print(completion.choices[0].message.content)
+        messages.append(  {'role': 'assistant', 'content': completion.choices[0].message.content}  )
         return completion.choices[0].message.content
     except Exception as e:
         print(f"错误信息：{e}")
@@ -228,75 +230,75 @@ if __name__ == '__main__':
 
 
 
-#include <WiFi.h>
-#include <WiFiMulti.h>
-#include <WiFiClientSecure.h>
-#include <WebSocketsClient_Generic.h>
-#include <SocketIOclient_Generic.h>
-#include <driver/i2s.h>
-#include <ArduinoJson.h>
+# #include <WiFi.h>
+# #include <WiFiMulti.h>
+# #include <WiFiClientSecure.h>
+# #include <WebSocketsClient_Generic.h>
+# #include <SocketIOclient_Generic.h>
+# #include <driver/i2s.h>
+# #include <ArduinoJson.h>
 
-WiFiMulti WiFiMulti;
-SocketIOclient socketIO;
+# WiFiMulti WiFiMulti;
+# SocketIOclient socketIO;
 
-IPAddress serverIP(192, 168, 43, 220);  // 服务器IP    serverIP(118,31,40,215);        serverIP(192, 168, 43, 220);
-uint16_t serverPort = 5002;              // WebSocket 服务器端口
+# IPAddress serverIP(192, 168, 43, 220);  // 服务器IP    serverIP(118,31,40,215);        serverIP(192, 168, 43, 220);
+# uint16_t serverPort = 5002;              // WebSocket 服务器端口
 
-#define I2S_WS 8
-#define I2S_SD 13
-#define I2S_SCK 7
-#define I2S_PORT I2S_NUM_0
-#define bufferLen 512  // I2S 缓冲区
+# #define I2S_WS 8
+# #define I2S_SD 13
+# #define I2S_SCK 7
+# #define I2S_PORT I2S_NUM_0
+# #define bufferLen 512  // I2S 缓冲区
 
-int16_t sBuffer[bufferLen];
-uint32_t sequenceNumber = 0;  // 序列号
+# int16_t sBuffer[bufferLen];
+# uint32_t sequenceNumber = 0;  // 序列号
 
-char ssid[] = "HUAWEI P50 Pro";   // WiFi 名称         "ziroom 502"
-char pass[] =  "12345678" ;  // WiFi 密码       "ziroomer002"
+# char ssid[] = "HUAWEI P50 Pro";   // WiFi 名称         "ziroom 502"
+# char pass[] =  "12345678" ;  // WiFi 密码       "ziroomer002"
 
-// const char *ssid = "HUAWEI P50 Pro"; // Enter your SSID here
-// const char *password = "12345678";   // Enter your Password here
-
-
-bool isRecording = false;           // 当前是否正在录音
-unsigned long silenceDuration = 0;  // 记录静音持续时间
-unsigned long lastSoundTime = 0;
-const unsigned long maxSilence = 2000;  // 最大静音时间 2 秒
-const float threshold = 400;           // 声音阈值
+# // const char *ssid = "HUAWEI P50 Pro"; // Enter your SSID here
+# // const char *password = "12345678";   // Enter your Password here
 
 
-
-
-bool play_mp3_ready = false;
-bool strat_init_audio = true;
-bool have_positive = false;
+# bool isRecording = false;           // 当前是否正在录音
+# unsigned long silenceDuration = 0;  // 记录静音持续时间
+# unsigned long lastSoundTime = 0;
+# const unsigned long maxSilence = 2000;  // 最大静音时间 2 秒
+# const float threshold = 400;           // 声音阈值
 
 
 
 
-void socketIOEvent(const socketIOmessageType_t &type, uint8_t *payload, const size_t &length) {
-  switch (type) {
-    case sIOtype_DISCONNECT:
-      Serial.println("[IOc] Disconnected");
-      break;
-    case sIOtype_CONNECT:
-      Serial.print("[IOc] Connected to url: ");
-      Serial.println((char *)payload);
-      socketIO.send(sIOtype_CONNECT, "/");
-      break;
-    case sIOtype_EVENT:
-      Serial.print("[IOc] Get event: ");
-      Serial.println((char *)payload);
-      play_mp3_ready = true;
+# bool play_mp3_ready = false;
+# bool strat_init_audio = true;
+# bool have_positive = false;
 
 
 
 
-      break;
-    default:
-      break;
-  }
-}
+# void socketIOEvent(const socketIOmessageType_t &type, uint8_t *payload, const size_t &length) {
+#   switch (type) {
+#     case sIOtype_DISCONNECT:
+#       Serial.println("[IOc] Disconnected");
+#       break;
+#     case sIOtype_CONNECT:
+#       Serial.print("[IOc] Connected to url: ");
+#       Serial.println((char *)payload);
+#       socketIO.send(sIOtype_CONNECT, "/");
+#       break;
+#     case sIOtype_EVENT:
+#       Serial.print("[IOc] Get event: ");
+#       Serial.println((char *)payload);
+#       play_mp3_ready = true;
+
+
+
+
+#       break;
+#     default:
+#       break;
+#   }
+# }
 
 # //播放MP3设置
 # #include <Arduino.h>
