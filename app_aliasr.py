@@ -8,7 +8,7 @@ app = Flask(__name__)
 sock = Sock(app)
 
 # 配置 Dashscope API Key
-dashscope.api_key = "sk-2b368fe2160f4223a82098770f28df0f"
+dashscope.api_key = ""
 
 # 全局变量
 translator = None
