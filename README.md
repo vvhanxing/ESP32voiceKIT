@@ -19,12 +19,12 @@ wget https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-py38_4.8
 sh Miniconda3-py38_4.8.3-Linux-x86_64.sh  
 vim ~/.bashrc   
 
+export PATH="/root/miniconda3/bin:$PATH"  
+source ~/.bashrc
+
 pip install flask 
 pip install dashscope 
 
-
-export PATH="/root/miniconda3/bin:$PATH"  
-source ~/.bashrc  
 ```
 ## 安装ffmpeg
 ```
